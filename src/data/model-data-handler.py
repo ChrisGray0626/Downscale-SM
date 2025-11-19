@@ -16,7 +16,7 @@ from util.util import convert_projection, get_tgt_dates
 TRAIN_MODE = "train"
 PREDICTION_MODE = "prediction"
 
-MODE = PREDICTION_MODE
+MODE = TRAIN_MODE
 
 if MODE == TRAIN_MODE:
     RESOLUTION = RESOLUTION_1KM
@@ -69,13 +69,13 @@ def main():
             file_path = os.path.join(RESULT_PATH, data_name, RESOLUTION, f"{date}{TIFF_SUFFIX}")
             data = read_tiff_data(file_path)
             df[data_name] = data.ravel()
-        # 清洗数据
-        if MODE == TRAIN_MODE:
-            # 清洗所有自变量与因变量中的缺失值
-            df = df.dropna()
-        elif MODE == PREDICTION_MODE:
-            # 只清洗自变量中的缺失值
-            df = df.dropna(subset=[NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME])
+        # # 清洗数据
+        # if MODE == TRAIN_MODE:
+        #     # 清洗所有自变量与因变量中的缺失值
+        #     df = df.dropna()
+        # elif MODE == PREDICTION_MODE:
+        #     # 只清洗自变量中的缺失值
+        #     df = df.dropna(subset=[NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME])
         # 清洗空值
         if df.empty:
             print(f"\n No data for date: {date} \n")

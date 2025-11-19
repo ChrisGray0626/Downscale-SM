@@ -13,7 +13,7 @@ RANGE = [-120, 35, -104, 49]
 
 # 基础路径
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH: str = "/Volumes/Elements SE/Data/2016"
+DATA_PATH: str = "/Volumes/Elements SE/Data/2017-2020"
 RESULT_PATH: str = os.path.join(ROOT_PATH, "Result")
 
 # 数据名称

@@ -145,7 +145,7 @@ def read_tiff(file_path: str, dst_epsg_code: int = 4326):
     return data, xs, ys
 
 
-def write_tiff(data, lons, lats, grid_path, dst_path, espg_code: int = 4326):
+def interpolate_tiff(data, lons, lats, grid_path, dst_path, espg_code: int = 4326):
     with rasterio.open(grid_path) as grid:
         grid_data = grid.read(1)
         grid_transform = grid.transform

@@ -12,7 +12,7 @@ from ismn.interface import ISMN_Interface
 from tqdm import tqdm
 
 from constant import *
-from util.tiff_util import write_tiff
+from util.tiff_util import interpolate_tiff
 from util.util import is_tgt_date
 
 INPUT_DIR_PATH = os.path.join(DATA_PATH, IN_SITU_NAME)
@@ -73,12 +73,12 @@ def convert2tiff():
         if not is_tgt_date(date):
             continue
         dst_path = os.path.join(TIFF_DIR_PATH, f"{date}{TIFF_SUFFIX}")
-        write_tiff(df[SM_NAME].values,
-                   df[LONGITUDE_NAME].values,
-                   df[LATITUDE_NAME].values,
-                   STANDARD_GRID_1KM_PATH,
-                   dst_path
-                   )
+        interpolate_tiff(df[SM_NAME].values,
+                         df[LONGITUDE_NAME].values,
+                         df[LATITUDE_NAME].values,
+                         STANDARD_GRID_1KM_PATH,
+                         dst_path
+                         )
 
 
 def main():
