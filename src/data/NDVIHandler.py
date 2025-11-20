@@ -33,6 +33,8 @@ class ResolutionConfig:
 
 class BatchConvert2TiffJob(BatchJob):
 
+    required_context_keys = (SRC_DIR_PATH_KEY, TIFF_DIR_PATH_KEY, GAP_VALUE_KEY, SCALE_FACTOR_KEY)
+
     def __init__(self):
         super().__init__()
         self.add(
@@ -63,6 +65,8 @@ class BatchConvert2TiffJob(BatchJob):
 
 class BatchMergeTiffJob(BatchJob):
 
+    required_context_keys = (TIFF_DIR_PATH_KEY, MERGED_DIR_PATH_KEY)
+
     def __init__(self):
         super().__init__()
         self.add(TiffMerger())
@@ -90,11 +94,13 @@ class BatchMergeTiffJob(BatchJob):
         return batch_contexts
 
 
-class BatchMultiResampleJob(BatchJob):
+class BatchMultiResampleTiffJob(BatchJob):
+
+    required_context_keys = (RESOLUTION_CONFIGS_KEY, DST_DIR_PATH_KEY, MERGED_DIR_PATH_KEY)
 
     def __init__(self):
         super().__init__()
-        self.add(BatchResampleJob())
+        self.add(BatchResampleTiffJob())
 
     def build_batch_context(self, context: Context) -> List[Context]:
         resolution_configs = context.get(RESOLUTION_CONFIGS_KEY)
@@ -111,7 +117,9 @@ class BatchMultiResampleJob(BatchJob):
         return batch_contexts
 
 
-class BatchResampleJob(BatchJob):
+class BatchResampleTiffJob(BatchJob):
+
+    required_context_keys = (MERGED_DIR_PATH_KEY, DST_DIR_PATH_KEY, REF_GRID_PATH_KEY)
 
     def __init__(self):
         super().__init__()
@@ -141,9 +149,11 @@ def main():
     job = Job()
     context = Context()
 
-    job.add(BatchConvert2TiffJob())
-    job.add(BatchMergeTiffJob())
-    job.add(BatchMultiResampleJob())
+    job.add([
+        # BatchConvert2TiffJob(),
+        BatchMergeTiffJob(),
+        BatchMultiResampleTiffJob(),
+    ])
 
     # Convert to TIFF Config
     # Read Config

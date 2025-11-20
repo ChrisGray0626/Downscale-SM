@@ -5,18 +5,16 @@
   @Author Chris
   @Date 2025/11/19
 """
-import glob
-import os
 
 import numpy as np
 from osgeo import gdal
 
-from constant import TIFF_SUFFIX
 from util.tiff_util import merge_tiff, resample_tiff
 from util.workflow.Base import *
 
 
 class HDF4Reader(BaseReader):
+    required_context_keys = (SRC_FILE_PATH_KEY,)
 
     def execute(self, context) -> Context:
         src_path = context.get(SRC_FILE_PATH_KEY)
@@ -42,6 +40,14 @@ class HDF4Reader(BaseReader):
 
 
 class TiffWriter(BaseWriter):
+    required_context_keys = (
+        DST_FILE_PATH_KEY,
+        DATA_KEY,
+        TRANSFORM_KEY,
+        PROJECTION_KEY,
+        X_SIZE_KEY,
+        Y_SIZE_KEY,
+    )
 
     def execute(self, context):
         dst_path = context.get(DST_FILE_PATH_KEY)
@@ -73,6 +79,7 @@ class TiffWriter(BaseWriter):
 
 
 class MODISDataProcessor(BaseTask):
+    required_context_keys = (DATA_KEY, GAP_VALUE_KEY, SCALE_FACTOR_KEY)
 
     def execute(self, context) -> Context:
         data = context.get(DATA_KEY)
@@ -87,6 +94,7 @@ class MODISDataProcessor(BaseTask):
 
 
 class TiffMerger(BaseTask):
+    required_context_keys = (SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY)
 
     def execute(self, context) -> Context:
         src_file_paths = context.get(SRC_FILE_PATHS_KEY)
@@ -101,6 +109,7 @@ class TiffMerger(BaseTask):
 
 
 class TiffResampler(BaseTask):
+    required_context_keys = (SRC_FILE_PATH_KEY, REF_GRID_PATH_KEY, DST_FILE_PATH_KEY)
 
     def execute(self, context) -> Context:
         src_path = context.get(SRC_FILE_PATH_KEY)

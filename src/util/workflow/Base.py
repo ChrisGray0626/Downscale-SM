@@ -9,7 +9,7 @@ import abc
 import copy
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple, Union, Iterable
 
 from tqdm import tqdm
 
@@ -38,10 +38,12 @@ class Context:
     state: Dict[str, Any] = field(default_factory=dict)
     local_state: Dict[str, Any] = field(default_factory=dict)
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str) -> Any:
         if key in self.local_state:
             return self.local_state[key]
-        return self.state.get(key, default)
+        if key in self.state:
+            return self.state[key]
+        raise KeyError(f"Context missing key '{key}'")
 
     def set(self, key: str, value: Any) -> None:
         self.local_state[key] = value
@@ -57,6 +59,9 @@ class Context:
 
     def set_local(self, key: str, value: Any) -> None:
         self.local_state[key] = value
+
+    def has(self, key: str) -> bool:
+        return key in self.local_state or key in self.state
 
     def clear_local(self) -> None:
         self.local_state.clear()
@@ -83,14 +88,22 @@ class Executable(ABC):
 
 
 class BaseTask(Executable, ABC):
+    required_context_keys: Tuple[str, ...] = ()
+
     def __init__(self, name: Optional[str] = None):
         self.name = name or self.__class__.__name__
 
     def run(self, context: Context) -> Context:
+        self._validate_context(context)
         return self.execute(context)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}(name={self.name})>"
+
+    def _validate_context(self, context: Context) -> None:
+        missing = [key for key in self.required_context_keys if not context.has(key)]
+        if missing:
+            raise KeyError(f"{self.name} missing required context keys :{missing}")
 
 
 class BaseReader(BaseTask, ABC):
@@ -107,11 +120,12 @@ class Batchable(Executable, ABC):
     def build_batch_context(self, context: Context) -> List[Context]:
         pass
 
-    def run_batch(self, context: Context) -> Context:
+    def _run_batch(self, context: Context) -> Context:
         batch_contexts = self.build_batch_context(context)
         batch_results = []
 
-        for batch_context in tqdm(batch_contexts, desc=f"Executing Batch {getattr(self, 'name', self.__class__.__name__)}"):
+        for batch_context in tqdm(batch_contexts,
+                                  desc=f"Executing Batch {getattr(self, 'name', self.__class__.__name__)}"):
             batch_result = self.execute(batch_context)
             batch_results.append(batch_result)
 
@@ -121,12 +135,17 @@ class Batchable(Executable, ABC):
         return context
 
 
-class Job(BaseTask):
-    def __init__(self, name: Optional[str] = None, *tasks: BaseTask):
-        super().__init__(name)
-        self.tasks = list(tasks)
+TaskArg = Union['BaseTask', Iterable['BaseTask']]
 
-    def add(self, *tasks: BaseTask) -> 'Job':
+
+class Job(BaseTask):
+    def __init__(self, name: Optional[str] = None, *tasks: TaskArg):
+        super().__init__(name)
+        self.tasks: List[BaseTask] = []
+        if tasks:
+            self.add(*tasks)
+
+    def add(self, *tasks: TaskArg) -> 'Job':
         for task in tasks:
             if isinstance(task, list):
                 self.tasks.extend(task)
@@ -146,5 +165,4 @@ class Job(BaseTask):
 class BatchJob(Job, Batchable, ABC):
 
     def run(self, context: Context) -> Context:
-        return self.run_batch(context)
-
+        return self._run_batch(context)
