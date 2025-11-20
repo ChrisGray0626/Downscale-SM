@@ -39,44 +39,44 @@ def merge_tiff(dst_path: str, src_dir_path: str = None, src_file_paths: list = N
     gdal.Warp(dst_path, src_file_paths, format="GTiff")
 
 
-def resample_tiff(src_path, tgt_grid_path, dst_path):
+def resample_tiff(src_path, ref_grid_path, dst_path):
     with rasterio.open(src_path) as src:
         src_data = src.read(1)
         src_transform = src.transform
         src_crs = src.crs
         src_nodata = src.nodata
 
-    with rasterio.open(tgt_grid_path) as tgt:
-        tgt_shape = (tgt.height, tgt.width)
-        tgt_transform = tgt.transform
-        tgt_crs = tgt.crs
-        tgt_nodata = tgt.nodata
+    with rasterio.open(ref_grid_path) as ref:
+        ref_shape = (ref.height, ref.width)
+        ref_transform = ref.transform
+        ref_crs = ref.crs
+        ref_nodata = ref.nodata
 
     # 空数组用于接收插值后的新数据
-    dst_data = np.empty(tgt_shape, dtype=src_data.dtype)
+    dst_data = np.empty(ref_shape, dtype=src_data.dtype)
 
     reproject(
         source=src_data,
         destination=dst_data,
         src_transform=src_transform,
         src_crs=src_crs,
-        dst_transform=tgt_transform,
-        dst_crs=tgt_crs,
+        dst_transform=ref_transform,
+        dst_crs=ref_crs,
         resampling=Resampling.bilinear,
         src_nodata=src_nodata,
-        # dst_nodata=tgt_nodata,
+        # dst_nodata=ref_nodata,
     )
 
     with rasterio.open(
             dst_path,
             "w",
             driver="GTiff",
-            height=tgt.height,
-            width=tgt.width,
+            height=ref.height,
+            width=ref.width,
             count=1,
             dtype=dst_data.dtype,
-            crs=tgt_crs,
-            transform=tgt_transform
+            crs=ref_crs,
+            transform=ref_transform
     ) as dst:
         dst.write(dst_data, 1)
 

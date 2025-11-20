@@ -7,22 +7,20 @@
 """
 import glob
 import os
-from collections import defaultdict
 
 import numpy as np
 from osgeo import gdal
 
 from constant import TIFF_SUFFIX
 from util.tiff_util import merge_tiff, resample_tiff
-from util.util import extract_date_from_modis_filename
 from util.workflow.Base import *
 
 
 class HDF4Reader(BaseReader):
 
     def execute(self, context) -> Context:
-        input_path = context.get(INPUT_PATH_KEY)
-        hdf_dataset = gdal.Open(input_path)
+        src_path = context.get(SRC_FILE_PATH_KEY)
+        hdf_dataset = gdal.Open(src_path)
         sub_datasets = hdf_dataset.GetSubDatasets()
 
         sds_path = sub_datasets[0][0]
@@ -46,7 +44,7 @@ class HDF4Reader(BaseReader):
 class TiffWriter(BaseWriter):
 
     def execute(self, context):
-        output_path = context.get(OUTPUT_PATH_KEY)
+        dst_path = context.get(DST_FILE_PATH_KEY)
         data = context.get(DATA_KEY)
         transform = context.get(TRANSFORM_KEY)
         projection = context.get(PROJECTION_KEY)
@@ -55,7 +53,7 @@ class TiffWriter(BaseWriter):
 
         driver = gdal.GetDriverByName('GTiff')
         out_dataset = driver.Create(
-            output_path,
+            dst_path,
             x_size,
             y_size,
             1,
@@ -88,42 +86,27 @@ class MODISDataProcessor(BaseTask):
         return context
 
 
-class Merger(BaseTask):
+class TiffMerger(BaseTask):
 
     def execute(self, context) -> Context:
-        tiff_dir_path = context.get(TIFF_DIR_PATH_KEY)
-        merged_dir_path = context.get(MERGED_DIR_PATH_KEY)
+        src_file_paths = context.get(SRC_FILE_PATHS_KEY)
+        dst_path = context.get(DST_FILE_PATH_KEY)
 
-        # 按日期分类
-        file_paths_group_by_date = defaultdict(list)
-        for file_path in glob.glob(os.path.join(tiff_dir_path, f"*{TIFF_SUFFIX}")):
-            filename = os.path.basename(file_path)
-            date = extract_date_from_modis_filename(filename)
-            file_paths_group_by_date[date].append(file_path)
-
-        if not merged_dir_path:
-            os.makedirs(merged_dir_path, exist_ok=True)
-
-        for date, file_paths in tqdm(file_paths_group_by_date.items()):
-            output_tiff = os.path.join(merged_dir_path, f"{date}{TIFF_SUFFIX}")
-            merge_tiff(dst_path=output_tiff, src_file_paths=file_paths)
+        merge_tiff(
+            src_file_paths=src_file_paths,
+            dst_path=dst_path,
+        )
 
         return context
 
 
-class Resampler(BaseTask):
+class TiffResampler(BaseTask):
 
     def execute(self, context) -> Context:
-        merged_dir_path = context.get(MERGED_DIR_PATH_KEY)
-        output_dir_path = context.get(OUTPUT_DIR_PATH_KEY)
-        standard_grid_path = context.get(STANDARD_GRID_PATH_KEY)
+        src_path = context.get(SRC_FILE_PATH_KEY)
+        ref_grid_path = context.get(REF_GRID_PATH_KEY)
+        dst_path = context.get(DST_FILE_PATH_KEY)
 
-        if not merged_dir_path:
-            os.makedirs(output_dir_path, exist_ok=True)
-
-        file_paths = glob.glob(os.path.join(merged_dir_path, f"*{TIFF_SUFFIX}"))
-        for file_path in tqdm(file_paths):
-            dst_path = os.path.join(output_dir_path, os.path.basename(file_path))
-            resample_tiff(file_path, standard_grid_path, dst_path)
+        resample_tiff(src_path, ref_grid_path, dst_path)
 
         return context

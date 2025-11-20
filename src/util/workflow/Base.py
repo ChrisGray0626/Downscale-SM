@@ -6,24 +6,27 @@
   @Date 2025/11/19
 """
 import abc
+import copy
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
 from tqdm import tqdm
 
+SRC_FILE_PATH_KEY = "src_file_path"
+DST_FILE_PATH_KEY = "dst_file_path"
+SRC_DIR_PATH_KEY = "src_dir_path"
+DST_DIR_PATH_KEY = "dst_dir_path"
+SRC_FILE_PATHS_KEY = "src_file_paths"
+
 TIFF_DIR_PATH_KEY = "tiff_dir_path"
 MERGED_DIR_PATH_KEY = "merged_dir_path"
-OUTPUT_DIR_PATH_KEY = "output_dir_path"
-STANDARD_GRID_PATH_KEY = "standard_grid_path"
+REF_GRID_PATH_KEY = "ref_grid_path"
+RESOLUTION_CONFIGS_KEY = "resolution_configs"
 
-INPUT_PATH_KEY = "input_path"
-OUTPUT_PATH_KEY = "output_path"
 DATA_KEY = "data"
-
 GAP_VALUE_KEY = "gap_value"
 SCALE_FACTOR_KEY = "scale_factor"
-
 TRANSFORM_KEY = "transform"
 PROJECTION_KEY = "projection"
 X_SIZE_KEY = "x_size"
@@ -58,6 +61,19 @@ class Context:
     def clear_local(self) -> None:
         self.local_state.clear()
 
+    def copy(self) -> 'Context':
+        new_context = Context()
+        new_context.state = copy.deepcopy(self.state)
+        new_context.local_state = copy.deepcopy(self.local_state)
+
+        return new_context
+
+    def global_copy(self) -> 'Context':
+        new_context = Context()
+        new_context.state = copy.deepcopy(self.state)
+
+        return new_context
+
 
 class Executable(ABC):
 
@@ -86,36 +102,31 @@ class BaseWriter(BaseTask, ABC):
 
 
 class Batchable(Executable, ABC):
-    def __init__(self, name: Optional[str] = None):
-        self.name = name or self.__class__.__name__
-        self.batch_results: List[Context] = []
-
-    def run_batch_mode(self, context: Context) -> Context:
-        batch_contexts = self.build_batch_context(context)
-
-        for batch_context in tqdm(batch_contexts, desc=f"Executing batch {self.name}"):
-            batch_result = self.execute(batch_context)
-            self.batch_results.append(batch_result)
-
-        return self.collect(context)
 
     @abc.abstractmethod
     def build_batch_context(self, context: Context) -> List[Context]:
         pass
 
-    def execute(self, context: Context) -> Context:
-        return self.run_batch_mode(context)
+    def run_batch(self, context: Context) -> Context:
+        batch_contexts = self.build_batch_context(context)
+        batch_results = []
 
-    def collect(self, context: Context) -> Context:
+        for batch_context in tqdm(batch_contexts, desc=f"Executing Batch {getattr(self, 'name', self.__class__.__name__)}"):
+            batch_result = self.execute(batch_context)
+            batch_results.append(batch_result)
+
+        return self.collect(context, batch_results)
+
+    def collect(self, context: Context, batch_results: List[Context]) -> Context:
         return context
 
 
-class BaseJob(BaseTask):
+class Job(BaseTask):
     def __init__(self, name: Optional[str] = None, *tasks: BaseTask):
         super().__init__(name)
         self.tasks = list(tasks)
 
-    def add(self, *tasks: BaseTask) -> 'BaseJob':
+    def add(self, *tasks: BaseTask) -> 'Job':
         for task in tasks:
             if isinstance(task, list):
                 self.tasks.extend(task)
@@ -130,3 +141,10 @@ class BaseJob(BaseTask):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}(name={self.name}, tasks={len(self.tasks)})>"
+
+
+class BatchJob(Job, Batchable, ABC):
+
+    def run(self, context: Context) -> Context:
+        return self.run_batch(context)
+
