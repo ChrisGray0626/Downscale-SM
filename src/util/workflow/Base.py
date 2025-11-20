@@ -10,6 +10,8 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
+from tqdm import tqdm
+
 TIFF_DIR_PATH_KEY = "tiff_dir_path"
 MERGED_DIR_PATH_KEY = "merged_dir_path"
 OUTPUT_DIR_PATH_KEY = "output_dir_path"
@@ -57,16 +59,19 @@ class Context:
         self.local_state.clear()
 
 
-class BaseTask(ABC):
+class Executable(ABC):
+
+    @abc.abstractmethod
+    def execute(self, context: Context) -> Context:
+        pass
+
+
+class BaseTask(Executable, ABC):
     def __init__(self, name: Optional[str] = None):
         self.name = name or self.__class__.__name__
 
     def run(self, context: Context) -> Context:
         return self.execute(context)
-
-    @abc.abstractmethod
-    def execute(self, context: Context) -> Context:
-        raise NotImplementedError("Subclasses must implement the execute method.")
 
     def __repr__(self):
         return f"<{self.__class__.__name__}(name={self.name})>"
@@ -80,15 +85,15 @@ class BaseWriter(BaseTask, ABC):
     pass
 
 
-class Batchable(ABC):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class Batchable(Executable, ABC):
+    def __init__(self, name: Optional[str] = None):
+        self.name = name or self.__class__.__name__
         self.batch_results: List[Context] = []
 
     def run_batch_mode(self, context: Context) -> Context:
         batch_contexts = self.build_batch_context(context)
 
-        for batch_context in batch_contexts:
+        for batch_context in tqdm(batch_contexts, desc=f"Executing batch {self.name}"):
             batch_result = self.execute(batch_context)
             self.batch_results.append(batch_result)
 
@@ -98,21 +103,24 @@ class Batchable(ABC):
     def build_batch_context(self, context: Context) -> List[Context]:
         pass
 
-    @abc.abstractmethod
-    def execute(self, batch_context: Context) -> Context:
-        pass
+    def execute(self, context: Context) -> Context:
+        return self.run_batch_mode(context)
 
     def collect(self, context: Context) -> Context:
         return context
 
 
 class BaseJob(BaseTask):
-    def __init__(self, name: Optional[str] = None, tasks: Optional[List[BaseTask]] = None):
+    def __init__(self, name: Optional[str] = None, *tasks: BaseTask):
         super().__init__(name)
-        self.tasks = tasks or []
+        self.tasks = list(tasks)
 
-    def add(self, task: BaseTask) -> 'BaseJob':
-        self.tasks.append(task)
+    def add(self, *tasks: BaseTask) -> 'BaseJob':
+        for task in tasks:
+            if isinstance(task, list):
+                self.tasks.extend(task)
+            else:
+                self.tasks.append(task)
         return self
 
     def execute(self, context: Context) -> Context:

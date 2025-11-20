@@ -11,12 +11,10 @@ from collections import defaultdict
 
 import numpy as np
 from osgeo import gdal
-from tqdm import tqdm
 
 from constant import TIFF_SUFFIX
 from util.tiff_util import merge_tiff, resample_tiff
 from util.util import extract_date_from_modis_filename
-
 from util.workflow.Base import *
 
 
