@@ -13,8 +13,11 @@ RANGE = [-120, 35, -104, 49]
 
 # 基础路径
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH: str = "/Volumes/Elements SE/Data/2017-2020"
+DATA_DIR_PATH = "/Volumes/Elements SE/Data/Downscale-DM"
+RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2017-2020")
+PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, "Processed")
 RESULT_PATH: str = os.path.join(ROOT_PATH, "Result")
+VALID_DATE_FILE_PATH = os.path.join(DATA_DIR_PATH, "ValidDate.txt")
 
 # 数据名称
 DATE_NAME = "Date"
@@ -35,8 +38,10 @@ IN_SITU_NAME = "InSitu"
 LABELED_DATA_NAME = "LabeledData"
 PRED_DATA_NAME = "PredData"
 
-TIFF_DIR_NAME = "tiff"
-MERGED_DIR_NAME = "merged"
+CONVERTED_DIR_NAME = "Converted"
+MERGED_DIR_NAME = "Merged"
+RESAMPLED_DIR_NAME = "Resampled"
+
 # 输入数据路径
 LABELED_DATA_DIR_PATH = os.path.join(RESULT_PATH, LABELED_DATA_NAME)
 # 预测数据路径

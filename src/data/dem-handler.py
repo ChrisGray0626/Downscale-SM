@@ -9,12 +9,12 @@ import os
 
 from tqdm import tqdm
 
-from constant import DATA_PATH, RESULT_PATH, TIFF_SUFFIX, DEM_NAME, MERGED_DIR_NAME
+from constant import RAW_DIR_PATH, RESULT_PATH, TIFF_SUFFIX, DEM_NAME, MERGED_DIR_NAME
 from util.tiff_util import merge_tiff, resample_tiff
 from util.util import unzip_file
 
 DIR_NAME = DEM_NAME
-DIR_PATH = os.path.join(DATA_PATH, DIR_NAME)
+DIR_PATH = os.path.join(RAW_DIR_PATH, DIR_NAME)
 UNZIP_DIR_PATH = os.path.join(DIR_PATH, "unzip")
 MERGED_FILE_PATH = os.path.join(DIR_PATH, MERGED_DIR_NAME, f"merged{TIFF_SUFFIX}")
 

@@ -15,7 +15,7 @@ from constant import *
 from util.tiff_util import interpolate_tiff
 from util.util import is_tgt_date
 
-INPUT_DIR_PATH = os.path.join(DATA_PATH, IN_SITU_NAME)
+INPUT_DIR_PATH = os.path.join(RAW_DIR_PATH, IN_SITU_NAME)
 INPUT_FILENAME = "Data_separate_files_header_20160101_20161231_12262_E0kA_20250714.zip"
 INPUT_PATH = os.path.join(INPUT_DIR_PATH, INPUT_FILENAME)
 OUTPUT_DIR_PATH = os.path.join(RESULT_PATH, IN_SITU_NAME)

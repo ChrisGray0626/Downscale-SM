@@ -9,6 +9,7 @@
 import numpy as np
 from osgeo import gdal
 
+from util.date_util import handle_valid_date
 from util.tiff_util import merge_tiff, resample_tiff
 from util.workflow.Base import *
 
@@ -117,5 +118,13 @@ class TiffResampler(BaseTask):
         dst_path = context.get(DST_FILE_PATH_KEY)
 
         resample_tiff(src_path, ref_grid_path, dst_path)
+
+        return context
+
+
+class ValidDateHandler(BaseTask):
+
+    def execute(self, context: Context) -> Context:
+        handle_valid_date()
 
         return context

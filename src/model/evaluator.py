@@ -13,7 +13,7 @@ from constant import *
 from util.tiff_util import read_tiff, read_tiff_data
 from util.util import get_tgt_dates
 
-IN_SITU_TIFF_DIR_PATH = os.path.join(RESULT_PATH, IN_SITU_NAME, TIFF_DIR_NAME)
+IN_SITU_TIFF_DIR_PATH = os.path.join(RESULT_PATH, IN_SITU_NAME, CONVERTED_DIR_NAME)
 
 
 def statistic(pre_result_data, in_situ_data):
