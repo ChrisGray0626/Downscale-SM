@@ -20,7 +20,6 @@ MERGED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DIR_NAME, MERGED_DIR_NAME)
 RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DIR_NAME)
 
 
-# TODO 根据日期过滤文件
 def main():
     job = Job()
     context = Context()

@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Iterable
 
 from tqdm import tqdm
 
+IS_SKIP_KEY = "is_skip"
 SRC_FILE_PATH_KEY = "src_file_path"
 SRC_FILE_PATHS_KEY = "src_file_paths"
 DST_FILE_PATH_KEY = "dst_file_path"
@@ -127,6 +128,9 @@ class Batchable(Executable, ABC):
 
         for batch_context in tqdm(batch_contexts,
                                   desc=f"Executing Batch {getattr(self, 'name', self.__class__.__name__)}"):
+            if batch_context.get_local(IS_SKIP_KEY, False):
+                batch_context.set(IS_SKIP_KEY, False)
+                continue
             batch_result = self.execute(batch_context)
             batch_results.append(batch_result)
 
@@ -156,6 +160,9 @@ class Job(BaseTask):
 
     def execute(self, context: Context) -> Context:
         for task in self.tasks:
+            if context.get_local(IS_SKIP_KEY, False):
+                context.set(IS_SKIP_KEY, False)
+                break
             context = task.run(context)
         return context
 
@@ -167,3 +174,15 @@ class BatchJob(Job, Batchable, ABC):
 
     def run(self, context: Context) -> Context:
         return self._run_batch(context)
+
+
+class BaseFilter(BaseTask, ABC):
+    @abc.abstractmethod
+    def filter(self, context: Context) -> bool:
+        pass
+
+    def execute(self, context: Context) -> Context:
+        is_skip = self.filter(context)
+        context.set(IS_SKIP_KEY, is_skip)
+
+        return context

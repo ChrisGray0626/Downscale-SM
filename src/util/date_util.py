@@ -9,8 +9,7 @@ import os
 import re
 from datetime import timedelta, datetime
 
-from constant import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH
-from data.NDVIHandler import RESAMPLED_DIR_PATH
+from constant import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH, RESAMPLED_DIR_NAME
 from util.util import write_txt, read_txt
 
 
@@ -38,7 +37,7 @@ def convert_year_day2date(year_day):
 
 
 def handle_valid_date():
-    dir_path = os.path.join(DATA_DIR_PATH, NDVI_NAME, RESAMPLED_DIR_PATH, RESOLUTION_1KM)
+    dir_path = os.path.join(DATA_DIR_PATH, NDVI_NAME, RESAMPLED_DIR_NAME, RESOLUTION_1KM)
     filenames = os.listdir(dir_path)
     # remove the suffix
     dates = [os.path.splitext(f)[0] for f in filenames if f.endswith(TIFF_SUFFIX)]

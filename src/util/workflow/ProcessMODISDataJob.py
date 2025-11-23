@@ -9,7 +9,7 @@ import glob
 from collections import defaultdict
 
 from constant import *
-from util.date_util import extract_date_from_modis_filename
+from util.date_util import extract_date_from_modis_filename, is_valid_date
 from util.workflow.Task import *
 from dataclasses import dataclass
 
@@ -21,12 +21,12 @@ class ResolutionConfig:
 
 
 class BatchConvert2TiffJob(BatchJob):
-
     required_context_keys = (RAW_DIR_PATH_KEY, CONVERTED_DIR_PATH_KEY)
 
     def __init__(self):
         super().__init__()
         self.add(
+            ValidDateFilter(),
             HDF4Reader(),
             MODISDataProcessor(),
             TiffWriter())
@@ -53,7 +53,6 @@ class BatchConvert2TiffJob(BatchJob):
 
 
 class BatchMergeTiffJob(BatchJob):
-
     required_context_keys = (CONVERTED_DIR_PATH_KEY, MERGED_DIR_PATH_KEY)
 
     def __init__(self):
@@ -84,7 +83,6 @@ class BatchMergeTiffJob(BatchJob):
 
 
 class BatchMultiResampleTiffJob(BatchJob):
-
     required_context_keys = (RESOLUTION_CONFIGS_KEY)
 
     def __init__(self):
@@ -107,7 +105,6 @@ class BatchMultiResampleTiffJob(BatchJob):
 
 
 class BatchResampleTiffJob(BatchJob):
-
     required_context_keys = (MERGED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY)
 
     def __init__(self):
@@ -133,3 +130,27 @@ class BatchResampleTiffJob(BatchJob):
 
         return batch_contexts
 
+
+class ValidDateFilter(BaseFilter):
+    """
+    Valid date filter for MODIS data processing.
+    
+    Filtering logic:
+    - NDVI data: No filtering applied, all data are preserved.
+      Reason: NDVI has the maximum temporal resolution, and all other data
+      need to be aligned to NDVI's time series. Therefore, all NDVI data
+      must be retained to ensure temporal alignment.
+    - Other data types (e.g., LST, Albedo): Filtered based on valid date list,
+      only data with valid dates are preserved.
+    """
+    required_context_keys = (SRC_FILE_PATH_KEY,)
+
+    def filter(self, context: Context) -> bool:
+        raw_dir_path = context.get_global(RAW_DIR_PATH_KEY)
+        if NDVI_NAME in raw_dir_path:
+            return False
+        src_file_path = context.get(SRC_FILE_PATH_KEY)
+        filename = os.path.basename(src_file_path)
+        date = extract_date_from_modis_filename(filename)
+
+        return not is_valid_date(date)
