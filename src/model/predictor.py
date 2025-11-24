@@ -10,7 +10,7 @@ import glob
 import pandas as pd
 from tqdm import tqdm
 
-from constant import *
+from Constant import *
 from gnnwr import datasets
 from trainer import init_model, handle_dataset
 from util.tiff_util import interpolate_tiff
@@ -47,7 +47,7 @@ def handle_pred_result(pred_result):
     data = pred_result['pred_result']
     dst_path = os.path.join(PRED_RESULT_DIR_PATH, f"{date}{TIFF_SUFFIX}")
     os.makedirs(PRED_RESULT_DIR_PATH, exist_ok=True)
-    interpolate_tiff(data, lon, lat, STANDARD_GRID_1KM_PATH, dst_path)
+    interpolate_tiff(data, lon, lat, REF_GRID_1KM_PATH, dst_path)
     csv_path = os.path.join(PRED_RESULT_DIR_PATH, f"{date}{CSV_SUFFIX}")
     pred_result.to_csv(csv_path, index=False)
 

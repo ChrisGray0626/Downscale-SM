@@ -8,19 +8,35 @@
 import glob
 from collections import defaultdict
 
-from constant import *
+from Constant import *
 from util.date_util import extract_date_from_modis_filename, is_valid_date
 from util.workflow.Task import *
 from dataclasses import dataclass
 
 
-@dataclass
-class ResolutionConfig:
-    resolution_km: int
-    ref_grid_path: str
+class BatchDecompressJob(BatchJob):
+    required_context_keys = (SRC_DIR_PATH_KEY, DST_DIR_PATH_KEY)
+
+    def __init__(self):
+        super().__init__()
+        self.add(Decompressor())
+
+    def build_batch_context(self, context: Context) -> List[Context]:
+        src_dir_path = context.get(SRC_DIR_PATH_KEY)
+        dst_dir_path = context.get(DST_DIR_PATH_KEY)
+
+        batch_contexts = []
+        for filename in tqdm(os.listdir(src_dir_path)):
+            batch_context = context.copy()
+            src_file_path = os.path.join(src_dir_path, filename)
+            batch_context.set(SRC_FILE_PATH_KEY, src_file_path)
+            batch_context.set(DST_DIR_PATH_KEY, dst_dir_path)
+            batch_contexts.append(batch_context)
+
+        return batch_contexts
 
 
-class BatchConvert2TiffJob(BatchJob):
+class BatchMODISData2TiffJob(BatchJob):
     required_context_keys = (RAW_DIR_PATH_KEY, CONVERTED_DIR_PATH_KEY)
 
     def __init__(self):
@@ -82,6 +98,12 @@ class BatchMergeTiffJob(BatchJob):
         return batch_contexts
 
 
+@dataclass
+class ResolutionConfig:
+    resolution_km: int
+    ref_grid_path: str
+
+
 class BatchMultiResampleTiffJob(BatchJob):
     required_context_keys = (RESOLUTION_CONFIGS_KEY)
 
@@ -134,7 +156,7 @@ class BatchResampleTiffJob(BatchJob):
 class ValidDateFilter(BaseFilter):
     """
     Valid date filter for MODIS data processing.
-    
+
     Filtering logic:
     - NDVI data: No filtering applied, all data are preserved.
       Reason: NDVI has the maximum temporal resolution, and all other data

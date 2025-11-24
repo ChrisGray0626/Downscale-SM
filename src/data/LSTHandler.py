@@ -7,7 +7,7 @@
 """
 
 
-from util.workflow.ProcessMODISDataJob import *
+from util.workflow.Job import *
 
 # Gap Value
 GAP_VALUE = 0
@@ -25,7 +25,7 @@ def main():
     context = Context()
 
     job.add([
-        BatchConvert2TiffJob(),
+        BatchMODISData2TiffJob(),
         BatchMergeTiffJob(),
         BatchMultiResampleTiffJob(),
     ])
@@ -47,11 +47,11 @@ def main():
     context.set_global(RESOLUTION_CONFIGS_KEY, [
         ResolutionConfig(
             resolution_km=1,
-            ref_grid_path=STANDARD_GRID_1KM_PATH,
+            ref_grid_path=REF_GRID_1KM_PATH,
         ),
         ResolutionConfig(
             resolution_km=36,
-            ref_grid_path=STANDARD_GRID_36KM_PATH,
+            ref_grid_path=REF_GRID_36KM_PATH,
         ),
     ])
     # Resample Config

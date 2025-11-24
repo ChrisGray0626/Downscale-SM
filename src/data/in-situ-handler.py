@@ -11,7 +11,7 @@ import pandas as pd
 from ismn.interface import ISMN_Interface
 from tqdm import tqdm
 
-from constant import *
+from Constant import *
 from util.tiff_util import interpolate_tiff
 from util.util import is_tgt_date
 
@@ -76,7 +76,7 @@ def convert2tiff():
         interpolate_tiff(df[SM_NAME].values,
                          df[LONGITUDE_NAME].values,
                          df[LATITUDE_NAME].values,
-                         STANDARD_GRID_1KM_PATH,
+                         REF_GRID_1KM_PATH,
                          dst_path
                          )
 

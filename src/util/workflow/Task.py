@@ -11,7 +11,21 @@ from osgeo import gdal
 
 from util.date_util import handle_valid_date
 from util.tiff_util import merge_tiff, resample_tiff
+from util.util import unzip_file
 from util.workflow.Base import *
+
+
+class Decompressor(BaseTask):
+    required_context_keys = (SRC_FILE_PATH_KEY, DST_DIR_PATH_KEY)
+
+    def execute(self, context) -> Context:
+        src_path = context.get(SRC_FILE_PATH_KEY)
+        dst_dir_path = context.get(DST_DIR_PATH_KEY)
+
+        if src_path.endswith(".zip"):
+            unzip_file(src_path, dst_dir_path)
+
+        return context
 
 
 class HDF4Reader(BaseReader):

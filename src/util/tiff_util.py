@@ -19,7 +19,7 @@ from rasterio.transform import rowcol
 from rasterio.warp import transform_bounds, reproject, Resampling
 from scipy.interpolate import griddata
 
-from constant import LONGITUDE_NAME, LATITUDE_NAME, PROJ_X_NAME, PROJ_Y_NAME, ROW_NAME, COL_NAME, DATA_NAME
+from Constant import LONGITUDE_NAME, LATITUDE_NAME, PROJ_X_NAME, PROJ_Y_NAME, ROW_NAME, COL_NAME, DATA_NAME
 
 gdal.UseExceptions()
 

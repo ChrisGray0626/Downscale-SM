@@ -9,7 +9,7 @@
 import pandas as pd
 from tqdm import tqdm
 
-from constant import *
+from Constant import *
 from util.tiff_util import read_tiff, read_tiff_data
 from util.util import convert_projection, get_tgt_dates
 
@@ -20,11 +20,11 @@ MODE = TRAIN_MODE
 
 if MODE == TRAIN_MODE:
     RESOLUTION = RESOLUTION_1KM
-    STANDARD_GRID_PATH = STANDARD_GRID_1KM_PATH
+    STANDARD_GRID_PATH = REF_GRID_1KM_PATH
     OUTPUT_DIR_PATH = LABELED_DATA_DIR_PATH
 elif MODE == PREDICTION_MODE:
     RESOLUTION = RESOLUTION_1KM
-    STANDARD_GRID_PATH = STANDARD_GRID_1KM_PATH
+    STANDARD_GRID_PATH = REF_GRID_1KM_PATH
     OUTPUT_DIR_PATH = PRED_DATA_DIR_PATH
 else:
     raise ValueError("Mode must be determined")

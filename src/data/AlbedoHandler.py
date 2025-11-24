@@ -6,8 +6,8 @@
   @Date 2025/5/19
 """
 
-from constant import *
-from data.NDVIHandler import BatchConvert2TiffJob, BatchMergeTiffJob, BatchMultiResampleTiffJob, ResolutionConfig
+from Constant import *
+from data.NDVIHandler import BatchMODISData2TiffJob, BatchMergeTiffJob, BatchMultiResampleTiffJob, ResolutionConfig
 from util.workflow.Base import *
 
 # Gap Value
@@ -26,7 +26,7 @@ def main():
     context = Context()
 
     job.add([
-        BatchConvert2TiffJob(),
+        BatchMODISData2TiffJob(),
         BatchMergeTiffJob(),
         BatchMultiResampleTiffJob(),
     ])
@@ -48,11 +48,11 @@ def main():
     context.set_global(RESOLUTION_CONFIGS_KEY, [
         ResolutionConfig(
             resolution_km=1,
-            ref_grid_path=STANDARD_GRID_1KM_PATH,
+            ref_grid_path=REF_GRID_1KM_PATH,
         ),
         ResolutionConfig(
             resolution_km=36,
-            ref_grid_path=STANDARD_GRID_36KM_PATH,
+            ref_grid_path=REF_GRID_36KM_PATH,
         ),
     ])
     # Resample Config

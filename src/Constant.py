@@ -7,16 +7,18 @@ HDF4_SUFFIX = ".hdf"
 HDF5_SUFFIX = ".h5"
 CSV_SUFFIX = ".csv"
 PKL_SUFFIX = ".pkl"
+ZIP_SUFFIX = ".zip"
 
 # 空间范围：Left Bottom Right Top
 RANGE = [-120, 35, -104, 49]
 
 # 基础路径
-ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJ_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR_PATH = "/Volumes/Elements SE/Data/Downscale-DM"
-RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2017-2020")
+RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2016-2020")
 PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, "Processed")
-RESULT_PATH: str = os.path.join(ROOT_PATH, "Result")
+RESULT_PATH: str = os.path.join(PROJ_PATH, "Result")
+
 VALID_DATE_FILE_PATH = os.path.join(DATA_DIR_PATH, "ValidDate.txt")
 
 # 数据名称
@@ -41,6 +43,7 @@ PRED_DATA_NAME = "PredData"
 CONVERTED_DIR_NAME = "Converted"
 MERGED_DIR_NAME = "Merged"
 RESAMPLED_DIR_NAME = "Resampled"
+DECOMPRESSED_DIR_NAME = "Decompressed"
 
 # 输入数据路径
 LABELED_DATA_DIR_PATH = os.path.join(RESULT_PATH, LABELED_DATA_NAME)
@@ -60,10 +63,10 @@ TEST_DATASET_DIR_PATH = os.path.join(DATASET_DIR_PATH, "test_dataset")
 # 模型文件路径
 MODEL_FILE_PATH = os.path.join(MODEL_DIR_PATH, f"{MODEL_NAME}{PKL_SUFFIX}")
 
-# 标准网格路径
-STANDARD_GRID_1KM_PATH = os.path.join(RESULT_PATH, "Standard_Grid_1km.tif")
-STANDARD_GRID_36KM_PATH = os.path.join(RESULT_PATH, "Standard_Grid_36km.tif")
-# 标准网格分辨率
+# Reference Grid
+REF_GRID_1KM_PATH = os.path.join(RESULT_PATH, "Standard_Grid_1km.tif")
+REF_GRID_36KM_PATH = os.path.join(RESULT_PATH, "Standard_Grid_36km.tif")
+# Reference Grid Resolution
 RESOLUTION_36KM = "36km"
 RESOLUTION_1KM = "1km"
 

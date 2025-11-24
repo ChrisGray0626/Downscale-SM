@@ -9,7 +9,7 @@ import os
 import re
 from datetime import timedelta, datetime
 
-from constant import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH, RESAMPLED_DIR_NAME
+from Constant import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH, RESAMPLED_DIR_NAME
 from util.util import write_txt, read_txt
 
 

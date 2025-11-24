@@ -12,7 +12,7 @@ import xarray as xr
 from rasterio.transform import from_origin
 from tqdm import tqdm
 
-from constant import *
+from Constant import *
 from util.tiff_util import resample_tiff
 from util.util import is_tgt_date
 

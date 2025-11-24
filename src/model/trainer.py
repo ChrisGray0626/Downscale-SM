@@ -10,7 +10,7 @@ import glob
 import pandas as pd
 from torch import nn
 
-from constant import *
+from Constant import *
 from gnnwr import datasets, models
 
 

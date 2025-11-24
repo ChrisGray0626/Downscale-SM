@@ -16,12 +16,15 @@ from tqdm import tqdm
 IS_SKIP_KEY = "is_skip"
 SRC_FILE_PATH_KEY = "src_file_path"
 SRC_FILE_PATHS_KEY = "src_file_paths"
+SRC_DIR_PATH_KEY = "src_dir_path"
 DST_FILE_PATH_KEY = "dst_file_path"
+DST_DIR_PATH_KEY = "dst_dir_path"
 
 RAW_DIR_PATH_KEY = "raw_dir_path"
 CONVERTED_DIR_PATH_KEY = "converted_dir_path"
 MERGED_DIR_PATH_KEY = "merged_dir_path"
 RESAMPLED_DIR_PATH_KEY = "resampled_dir_path"
+DECOMPRESSED_DIR_PATH_KEY = "decompressed_dir_path"
 
 REF_GRID_PATH_KEY = "ref_grid_path"
 RESOLUTION_CONFIGS_KEY = "resolution_configs"

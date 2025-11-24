@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-from constant import *
+from Constant import *
 from util.tiff_util import read_tiff, read_tiff_data
 from util.util import get_tgt_dates
 
