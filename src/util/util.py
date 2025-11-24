@@ -36,12 +36,3 @@ def write_txt(dst_path, rows):
 def read_txt(src_path):
     with open(src_path, 'r') as f:
         return [line.strip() for line in f.readlines()]
-
-# def is_tgt_date(date: str):
-#     tgt_dates = read_txt(TGT_DATE_PATH)
-#     return date in tgt_dates
-#
-#
-# def get_tgt_dates():
-#     tgt_dates = read_txt(TGT_DATE_PATH)
-#     return tgt_dates

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Task-based data processing workflow with context-based data passing
+  @Description Base class for Workflow
   @Author Chris
   @Date 2025/11/19
 """
@@ -13,29 +13,20 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Iterable
 
 from tqdm import tqdm
 
-IS_SKIP_KEY = "is_skip"
-SRC_FILE_PATH_KEY = "src_file_path"
-SRC_FILE_PATHS_KEY = "src_file_paths"
-SRC_DIR_PATH_KEY = "src_dir_path"
-DST_FILE_PATH_KEY = "dst_file_path"
-DST_DIR_PATH_KEY = "dst_dir_path"
+from util.workflow.WorkflowConstant import (
+    IS_SKIP_KEY,
+)
 
-RAW_DIR_PATH_KEY = "raw_dir_path"
-CONVERTED_DIR_PATH_KEY = "converted_dir_path"
-MERGED_DIR_PATH_KEY = "merged_dir_path"
-RESAMPLED_DIR_PATH_KEY = "resampled_dir_path"
-DECOMPRESSED_DIR_PATH_KEY = "decompressed_dir_path"
-
-REF_GRID_PATH_KEY = "ref_grid_path"
-RESOLUTION_CONFIGS_KEY = "resolution_configs"
-
-DATA_KEY = "data"
-GAP_VALUE_KEY = "gap_value"
-SCALE_FACTOR_KEY = "scale_factor"
-TRANSFORM_KEY = "transform"
-PROJECTION_KEY = "projection"
-X_SIZE_KEY = "x_size"
-Y_SIZE_KEY = "y_size"
+__all__ = [
+    'Context',
+    'Executable',
+    'BaseTask',
+    'Batchable',
+    'Job',
+    'BatchJob',
+    'BaseFilter',
+    'TaskArg',
+]
 
 
 @dataclass
@@ -43,12 +34,10 @@ class Context:
     state: Dict[str, Any] = field(default_factory=dict)
     local_state: Dict[str, Any] = field(default_factory=dict)
 
-    def get(self, key: str) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         if key in self.local_state:
             return self.local_state[key]
-        if key in self.state:
-            return self.state[key]
-        raise KeyError(f"Context missing key '{key}'")
+        return self.state.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
         self.local_state[key] = value
@@ -109,14 +98,6 @@ class BaseTask(Executable, ABC):
         missing = [key for key in self.required_context_keys if not context.has(key)]
         if missing:
             raise KeyError(f"{self.name} missing required context keys :{missing}")
-
-
-class BaseReader(BaseTask, ABC):
-    pass
-
-
-class BaseWriter(BaseTask, ABC):
-    pass
 
 
 class Batchable(Executable, ABC):

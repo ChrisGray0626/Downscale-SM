@@ -12,7 +12,7 @@ from ismn.interface import ISMN_Interface
 from tqdm import tqdm
 
 from Constant import *
-from util.tiff_util import interpolate_tiff
+from util.TiffUtil import interpolate_tiff
 from util.util import is_tgt_date
 
 INPUT_DIR_PATH = os.path.join(RAW_DIR_PATH, IN_SITU_NAME)

@@ -6,17 +6,21 @@
   @Date 2025/5/5
 """
 
-from util.workflow.Job import *
+from Constant import *
+from util.workflow.Base import Job, Context
+from util.workflow.Job import BatchMODISData2TiffJob, BatchMergeTiffJob, BatchMultiResampleTiffJob, ResolutionConfig
+from util.workflow.Task import ValidDateHandler
+from util.workflow.WorkflowConstant import *
 
 # Gap Value
 GAP_VALUE = -3000
 SCALE_FACTOR = 0.0001
 
-DIR_NAME = NDVI_NAME
-RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DIR_NAME)
-CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DIR_NAME, CONVERTED_DIR_NAME)
-MERGED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DIR_NAME, MERGED_DIR_NAME)
-RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DIR_NAME)
+DATA_NAME = NDVI_NAME
+RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)
+CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, CONVERTED_DIR_NAME)
+MERGED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, MERGED_DIR_NAME)
+RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME)
 
 
 def main():
@@ -24,9 +28,23 @@ def main():
     context = Context()
 
     job.add([
-        BatchMODISData2TiffJob(),
-        BatchMergeTiffJob(),
-        BatchMultiResampleTiffJob(),
+        BatchMODISData2TiffJob(
+            src_dir_path_key=RAW_DIR_PATH_KEY,
+            dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
+            data_name=DATA_NAME,
+            gap_value_key=GAP_VALUE_KEY,
+            scale_factor_key=SCALE_FACTOR_KEY
+        ),
+        BatchMergeTiffJob(
+            src_dir_path_key=CONVERTED_DIR_PATH_KEY,
+            dst_dir_path_key=MERGED_DIR_PATH_KEY
+        ),
+        BatchMultiResampleTiffJob(
+            resolution_configs_key=RESOLUTION_CONFIGS_KEY,
+            src_dir_path_key=MERGED_DIR_PATH_KEY,
+            ref_grid_path_key=REF_GRID_PATH_KEY,
+            dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
+        ),
         ValidDateHandler(),
     ])
 

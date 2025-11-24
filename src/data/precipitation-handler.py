@@ -13,7 +13,7 @@ from rasterio.transform import from_origin
 from tqdm import tqdm
 
 from Constant import *
-from util.tiff_util import resample_tiff
+from util.TiffUtil import resample_tiff
 from util.util import is_tgt_date
 
 # 单位：千米

@@ -1,55 +1,90 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description
+  @Description Job
   @Author Chris
   @Date 2025/11/23
 """
 import glob
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import List
 
 from Constant import *
-from util.date_util import extract_date_from_modis_filename, is_valid_date
+from util.workflow.WorkflowConstant import *
+from util.DateUtil import extract_date_from_modis_filename
+from util.workflow.Base import *
 from util.workflow.Task import *
-from dataclasses import dataclass
+
+__all__ = [
+    'BatchDecompressJob',
+    'BatchMODISData2TiffJob',
+    'BatchMergeTiffJob',
+    'ResolutionConfig',
+    'BatchResampleTiffJob',
+    'BatchMultiResampleTiffJob',
+    'MultiResampleTiffJob',
+]
 
 
 class BatchDecompressJob(BatchJob):
-    required_context_keys = (SRC_DIR_PATH_KEY, DST_DIR_PATH_KEY)
-
-    def __init__(self):
+    def __init__(self, src_dir_path_key: str, dst_dir_path_key: str):
         super().__init__()
-        self.add(Decompressor())
+        self.src_dir_path_key = src_dir_path_key
+        self.dst_dir_path_key = dst_dir_path_key
+        self.add(Decompressor(
+            src_file_path_key=SRC_FILE_PATH_KEY,
+            dst_dir_path_key=dst_dir_path_key
+        ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
-        src_dir_path = context.get(SRC_DIR_PATH_KEY)
-        dst_dir_path = context.get(DST_DIR_PATH_KEY)
+        src_dir_path = context.get(self.src_dir_path_key)
+        dst_dir_path = context.get(self.dst_dir_path_key)
 
         batch_contexts = []
-        for filename in tqdm(os.listdir(src_dir_path)):
+        for filename in os.listdir(src_dir_path):
             batch_context = context.copy()
             src_file_path = os.path.join(src_dir_path, filename)
             batch_context.set(SRC_FILE_PATH_KEY, src_file_path)
-            batch_context.set(DST_DIR_PATH_KEY, dst_dir_path)
+            batch_context.set(self.dst_dir_path_key, dst_dir_path)
             batch_contexts.append(batch_context)
 
         return batch_contexts
 
 
 class BatchMODISData2TiffJob(BatchJob):
-    required_context_keys = (RAW_DIR_PATH_KEY, CONVERTED_DIR_PATH_KEY)
-
-    def __init__(self):
+    def __init__(self,
+                 src_dir_path_key: str,
+                 dst_dir_path_key: str,
+                 data_name: str,
+                 gap_value_key: str,
+                 scale_factor_key: str):
         super().__init__()
+        self.src_dir_path_key = src_dir_path_key
+        self.dst_dir_path_key = dst_dir_path_key
         self.add(
-            ValidDateFilter(),
-            HDF4Reader(),
-            MODISDataProcessor(),
-            TiffWriter())
+            ValidDateFilter(
+                data_name=data_name,
+                src_file_path_key=SRC_FILE_PATH_KEY
+            ),
+            HDF4Reader(src_file_path_key=SRC_FILE_PATH_KEY),
+            MODISDataProcessor(
+                data_key=DATA_KEY,
+                gap_value_key=gap_value_key,
+                scale_factor_key=scale_factor_key
+            ),
+            TiffWriter(
+                dst_file_path_key=DST_FILE_PATH_KEY,
+                data_key=DATA_KEY,
+                transform_key=TRANSFORM_KEY,
+                projection_key=PROJECTION_KEY,
+                x_size_key=X_SIZE_KEY,
+                y_size_key=Y_SIZE_KEY
+            ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
-        src_dir_path = context.get(RAW_DIR_PATH_KEY)
-        dst_dir_path = context.get(CONVERTED_DIR_PATH_KEY)
+        src_dir_path = context.get(self.src_dir_path_key)
+        dst_dir_path = context.get(self.dst_dir_path_key)
 
         os.makedirs(dst_dir_path, exist_ok=True)
 
@@ -69,15 +104,18 @@ class BatchMODISData2TiffJob(BatchJob):
 
 
 class BatchMergeTiffJob(BatchJob):
-    required_context_keys = (CONVERTED_DIR_PATH_KEY, MERGED_DIR_PATH_KEY)
-
-    def __init__(self):
+    def __init__(self, src_dir_path_key: str, dst_dir_path_key: str):
         super().__init__()
-        self.add(TiffMerger())
+        self.src_dir_path_key = src_dir_path_key
+        self.dst_dir_path_key = dst_dir_path_key
+        self.add(TiffMerger(
+            src_file_paths_key=SRC_FILE_PATHS_KEY,
+            dst_file_path_key=DST_FILE_PATH_KEY
+        ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
-        src_dir_path = context.get(CONVERTED_DIR_PATH_KEY)
-        dst_dir_path = context.get(MERGED_DIR_PATH_KEY)
+        src_dir_path = context.get(self.src_dir_path_key)
+        dst_dir_path = context.get(self.dst_dir_path_key)
 
         os.makedirs(dst_dir_path, exist_ok=True)
 
@@ -105,38 +143,95 @@ class ResolutionConfig:
 
 
 class BatchMultiResampleTiffJob(BatchJob):
-    required_context_keys = (RESOLUTION_CONFIGS_KEY)
-
-    def __init__(self):
+    def __init__(self,
+                 resolution_configs_key: str,
+                 src_dir_path_key: str,
+                 ref_grid_path_key: str,
+                 dst_dir_path_key: str,
+                 ):
         super().__init__()
-        self.add(BatchResampleTiffJob())
+        self.resolution_configs_key = resolution_configs_key
+        self.src_dir_path_key = src_dir_path_key
+        self.ref_grid_path_key = ref_grid_path_key
+        self.dst_dir_path_key = dst_dir_path_key
+        self.add(BatchResampleTiffJob(
+            src_dir_path_key=src_dir_path_key,
+            ref_grid_path_key=ref_grid_path_key,
+            dst_dir_path_key=dst_dir_path_key,
+        ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
-        resolution_configs = context.get(RESOLUTION_CONFIGS_KEY)
+        resolution_configs = context.get(self.resolution_configs_key)
 
         batch_contexts = []
 
         for config in resolution_configs:
             batch_context = context.global_copy()
-            batch_context.set(REF_GRID_PATH_KEY, config.ref_grid_path)
-            resampled_dir_path = os.path.join(context.get(RESAMPLED_DIR_PATH_KEY), f"{config.resolution_km}km")
-            batch_context.set(RESAMPLED_DIR_PATH_KEY, resampled_dir_path)
+            dst_dir_path = os.path.join(context.get(self.dst_dir_path_key), f"{config.resolution_km}km")
+            batch_context.set(self.dst_dir_path_key, dst_dir_path)
+            batch_context.set(self.ref_grid_path_key, config.ref_grid_path)
+            batch_contexts.append(batch_context)
+
+        return batch_contexts
+
+
+class MultiResampleTiffJob(BatchJob):
+
+    def __init__(self,
+                 resolution_configs_key: str,
+                 src_file_path_key: str,
+                 ref_grid_path_key: str,
+                 dst_dir_path_key: str,
+                 ):
+        super().__init__()
+        self.resolution_configs_key = resolution_configs_key
+        self.src_file_path_key = src_file_path_key
+        self.ref_grid_path_key = ref_grid_path_key
+        self.dst_dir_path_key = dst_dir_path_key
+        self.add(TiffResampler(
+                src_file_path_key=src_file_path_key,
+                ref_grid_path_key=ref_grid_path_key,
+                dst_file_path_key=DST_FILE_PATH_KEY
+            ))
+
+    def build_batch_context(self, context: Context) -> List[Context]:
+        resolution_configs = context.get(self.resolution_configs_key)
+        src_file_path = context.get(self.src_file_path_key)
+        dst_dir_path = context.get(self.dst_dir_path_key)
+
+        os.makedirs(dst_dir_path, exist_ok=True)
+
+        batch_contexts = []
+        for config in resolution_configs:
+            batch_context = context.global_copy()
+            batch_context.set(self.src_file_path_key, src_file_path)
+            batch_context.set(self.ref_grid_path_key, config.ref_grid_path)
+            dst_file_path = os.path.join(dst_dir_path, f"{config.resolution_km}km", os.path.basename(src_file_path))
+            batch_context.set(DST_FILE_PATH_KEY, dst_file_path)
             batch_contexts.append(batch_context)
 
         return batch_contexts
 
 
 class BatchResampleTiffJob(BatchJob):
-    required_context_keys = (MERGED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY)
-
-    def __init__(self):
+    def __init__(self,
+                 src_dir_path_key: str,
+                 dst_dir_path_key: str,
+                 ref_grid_path_key: str):
         super().__init__()
-        self.add(TiffResampler())
+        self.src_dir_path_key = src_dir_path_key
+        self.dst_dir_path_key = dst_dir_path_key
+        self.ref_grid_path_key = ref_grid_path_key
+        self.add(TiffResampler(
+            src_file_path_key=SRC_FILE_PATH_KEY,
+            ref_grid_path_key=REF_GRID_PATH_KEY,
+            dst_file_path_key=DST_FILE_PATH_KEY
+        ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
-        src_dir_path = context.get(MERGED_DIR_PATH_KEY)
-        dst_dir_path = context.get(RESAMPLED_DIR_PATH_KEY)
-        ref_grid_path = context.get(REF_GRID_PATH_KEY)
+        src_dir_path = context.get(self.src_dir_path_key)
+        dst_dir_path = context.get(self.dst_dir_path_key)
+        ref_grid_path = context.get(self.ref_grid_path_key)
 
         os.makedirs(dst_dir_path, exist_ok=True)
 
@@ -153,26 +248,4 @@ class BatchResampleTiffJob(BatchJob):
         return batch_contexts
 
 
-class ValidDateFilter(BaseFilter):
-    """
-    Valid date filter for MODIS data processing.
 
-    Filtering logic:
-    - NDVI data: No filtering applied, all data are preserved.
-      Reason: NDVI has the maximum temporal resolution, and all other data
-      need to be aligned to NDVI's time series. Therefore, all NDVI data
-      must be retained to ensure temporal alignment.
-    - Other data types (e.g., LST, Albedo): Filtered based on valid date list,
-      only data with valid dates are preserved.
-    """
-    required_context_keys = (SRC_FILE_PATH_KEY,)
-
-    def filter(self, context: Context) -> bool:
-        raw_dir_path = context.get_global(RAW_DIR_PATH_KEY)
-        if NDVI_NAME in raw_dir_path:
-            return False
-        src_file_path = context.get(SRC_FILE_PATH_KEY)
-        filename = os.path.basename(src_file_path)
-        date = extract_date_from_modis_filename(filename)
-
-        return not is_valid_date(date)

@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 from Constant import *
-from util.tiff_util import read_tiff, read_tiff_data
+from util.TiffUtil import read_tiff, read_tiff_data
 from util.util import get_tgt_dates
 
 IN_SITU_TIFF_DIR_PATH = os.path.join(RESULT_PATH, IN_SITU_NAME, CONVERTED_DIR_NAME)

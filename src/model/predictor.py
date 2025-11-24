@@ -13,7 +13,7 @@ from tqdm import tqdm
 from Constant import *
 from gnnwr import datasets
 from trainer import init_model, handle_dataset
-from util.tiff_util import interpolate_tiff
+from util.TiffUtil import interpolate_tiff
 
 
 def predict_model(pred_data_path):

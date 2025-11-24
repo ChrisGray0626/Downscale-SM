@@ -10,7 +10,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from Constant import *
-from util.tiff_util import read_tiff, read_tiff_data
+from util.TiffUtil import read_tiff, read_tiff_data
 from util.util import convert_projection, get_tgt_dates
 
 TRAIN_MODE = "train"

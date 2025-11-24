@@ -24,7 +24,7 @@ from Constant import LONGITUDE_NAME, LATITUDE_NAME, PROJ_X_NAME, PROJ_Y_NAME, RO
 gdal.UseExceptions()
 
 
-def merge_tiff(dst_path: str, src_dir_path: str = None, src_file_paths: list = None):
+def merge_tiff(dst_file_path: str, src_dir_path: str = None, src_file_paths: list = None):
     if src_dir_path is None and src_file_paths is None:
         raise ValueError("Either src_dir_path or src_file_paths must be provided.")
     # 如果提供了 src_file_paths，则忽略 src_dir_path
@@ -36,7 +36,7 @@ def merge_tiff(dst_path: str, src_dir_path: str = None, src_file_paths: list = N
         src_file_paths = glob.glob(os.path.join(src_dir_path, '*'))
     if not src_file_paths:
         raise ValueError("No files found in the specified directory.")
-    gdal.Warp(dst_path, src_file_paths, format="GTiff")
+    gdal.Warp(dst_file_path, src_file_paths, format="GTiff")
 
 
 def resample_tiff(src_path, ref_grid_path, dst_path):
