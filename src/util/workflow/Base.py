@@ -161,6 +161,7 @@ class BatchJob(Job, Batchable, ABC):
 
 
 class BaseFilter(BaseTask, ABC):
+
     @abc.abstractmethod
     def filter(self, context: Context) -> bool:
         pass

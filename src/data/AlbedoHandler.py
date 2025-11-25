@@ -30,7 +30,7 @@ def main():
         BatchMODISData2TiffJob(
             src_dir_path_key=RAW_DIR_PATH_KEY,
             dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
-            data_name=DATA_NAME,
+            data_name_key=DATA_NAME_KEY,
             gap_value_key=GAP_VALUE_KEY,
             scale_factor_key=SCALE_FACTOR_KEY
         ),
@@ -49,6 +49,8 @@ def main():
     # Convert to TIFF Config
     # Read Config
     context.set_global(RAW_DIR_PATH_KEY, RAW_DIR_PATH)
+    # Valid Date Config
+    context.set_global(DATA_NAME_KEY, DATA_NAME)
     # MODIS Data Process Config
     context.set_global(GAP_VALUE_KEY, GAP_VALUE)
     context.set_global(SCALE_FACTOR_KEY, SCALE_FACTOR)

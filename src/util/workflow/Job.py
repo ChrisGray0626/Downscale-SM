@@ -56,7 +56,7 @@ class BatchMODISData2TiffJob(BatchJob):
     def __init__(self,
                  src_dir_path_key: str,
                  dst_dir_path_key: str,
-                 data_name: str,
+                 data_name_key: str,
                  gap_value_key: str,
                  scale_factor_key: str):
         super().__init__()
@@ -64,7 +64,7 @@ class BatchMODISData2TiffJob(BatchJob):
         self.dst_dir_path_key = dst_dir_path_key
         self.add(
             ValidDateFilter(
-                data_name=data_name,
+                data_name_key=data_name_key,
                 src_file_path_key=SRC_FILE_PATH_KEY
             ),
             HDF4Reader(src_file_path_key=SRC_FILE_PATH_KEY),

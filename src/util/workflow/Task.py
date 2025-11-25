@@ -92,6 +92,7 @@ class TiffWriter(BaseTask):
         self.y_size_key = y_size_key
 
     def execute(self, context):
+        # TODO rasterio handle
         dst_path = context.get(self.dst_file_path_key)
         data = context.get(self.data_key)
         transform = context.get(self.transform_key)
@@ -218,13 +219,13 @@ class ValidDateFilter(BaseFilter):
       only data with valid dates are preserved.
     """
 
-    def __init__(self, data_name: str, src_file_path_key: str, name: Optional[str] = None):
-        super().__init__(name)
-        self.data_name = data_name
+    def __init__(self, data_name_key: str = DATA_NAME_KEY, src_file_path_key: str = SRC_FILE_PATH_KEY):
+        super().__init__()
+        self.data_name_key = data_name_key
         self.src_file_path_key = src_file_path_key
 
     def filter(self, context: Context) -> bool:
-        if self.data_name == NDVI_NAME:
+        if context.get(self.data_name_key) == NDVI_NAME:
             return False
         src_file_path = context.get(self.src_file_path_key)
         filename = os.path.basename(src_file_path)

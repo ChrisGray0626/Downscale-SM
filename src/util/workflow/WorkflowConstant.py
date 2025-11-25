@@ -27,9 +27,13 @@ RESOLUTION_CONFIGS_KEY = "resolution_configs"
 
 # Data
 DATA_KEY = "data"
+DATA_NAME_KEY = "data_name"
 GAP_VALUE_KEY = "gap_value"
 SCALE_FACTOR_KEY = "scale_factor"
 TRANSFORM_KEY = "transform"
 PROJECTION_KEY = "projection"
 X_SIZE_KEY = "x_size"
 Y_SIZE_KEY = "y_size"
+LONGITUDE_KEY = "longitude"
+LATITUDE_KEY = "latitude"
+DATE_KEY = "date"

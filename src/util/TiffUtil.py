@@ -15,7 +15,7 @@ import rasterio
 from matplotlib import pyplot as plt
 from osgeo import gdal
 from pyproj import CRS, Transformer
-from rasterio.transform import rowcol
+from rasterio.transform import rowcol, from_origin
 from rasterio.warp import transform_bounds, reproject, Resampling
 from scipy.interpolate import griddata
 
@@ -223,53 +223,60 @@ def interpolate(src_data, src_lon, src_lat, grid_path, dst_path, src_espg_code=4
         dst.write(data_interp.astype(np.float32), 1)
 
 
-class MODISDataProcessor(ABC):
-    def __init__(self, input_path, output_path):
-        self.input_path = input_path
-        self.output_path = output_path
+def write_lonlat_tiff(data,
+                      lons,
+                      lats,
+                      dst_path: str,
+                      epsg_code: int = 4326,
+                      nodata: float = np.nan,
+                      dtype=None,):
+    """
+    Write a 2-D array to GeoTIFF using corresponding lon/lat coordinates.
 
-    def read_data(self):
-        # 打开 HDF4 文件
-        hdf_dataset = gdal.Open(self.input_path)
-        sub_datasets = hdf_dataset.GetSubDatasets()
+    Parameters
+    ----------
+    data : numpy.ndarray | xarray.DataArray
+        2-D grid data aligned as (lat, lon).
+    lons : numpy.ndarray
+        1-D longitude coordinates (ascending).
+    lats : numpy.ndarray
+        1-D latitude coordinates (descending or ascending).
+    dst_path : str
+    epsg_code : int, optional
+    nodata : float, optional
+    dtype: str, optional
+    """
+    data = np.asarray(data)
+    lons = np.asarray(lons)
+    lats = np.asarray(lats)
 
-        sds_path = sub_datasets[0][0]
-        ds = gdal.Open(sds_path)
+    if data.ndim != 2:
+        raise ValueError(f"Expected 2-D data, got shape {data.shape}")
 
-        data = ds.ReadAsArray().astype(np.float32)
+    if lons.ndim != 1 or lats.ndim != 1:
+        raise ValueError("Longitude and latitude inputs must be 1-D arrays.")
 
-        transform = ds.GetGeoTransform()
-        projection = ds.GetProjection()
-        x_size = ds.RasterXSize
-        y_size = ds.RasterYSize
+    expected_shape = (len(lats), len(lons))
+    if data.shape != expected_shape:
+        raise ValueError(f"Data shape {data.shape} does not match "
+                         f"(len(lat), len(lon)) {expected_shape}.")
 
-        return data, transform, projection, x_size, y_size
+    if len(lons) < 2 or len(lats) < 2:
+        raise ValueError("Longitude and latitude arrays must each contain at least two points.")
 
-    @abstractmethod
-    def process_data(self, data):
-        pass
+    pixel_size_x = (lons.max() - lons.min()) / (len(lons) - 1)
+    pixel_size_y = (lats.max() - lats.min()) / (len(lats) - 1)
+    transform = from_origin(lons.min(), lats.max(), pixel_size_x, pixel_size_y)
 
-    def write_data(self, data, transform, projection, x_size, y_size):
-        # 创建输出文件
-        driver = gdal.GetDriverByName('GTiff')
-        out_dataset = driver.Create(
-            self.output_path,
-            x_size,
-            y_size,
-            1,
-            gdal.GDT_Float32
-        )
-
-        out_band = out_dataset.GetRasterBand(1)
-        out_band.WriteArray(data)
-        out_band.SetNoDataValue(np.nan)
-
-        out_dataset.SetGeoTransform(transform)
-        out_dataset.SetProjection(projection)
-
-        out_dataset.FlushCache()
-
-    def run(self):
-        data, transform, projection, x_size, y_size = self.read_data()
-        processed_data = self.process_data(data)
-        self.write_data(processed_data, transform, projection, x_size, y_size)
+    profile = {
+        'driver': 'GTiff',
+        'width': data.shape[1],
+        'height': data.shape[0],
+        'count': 1,
+        'crs': CRS.from_epsg(epsg_code),
+        'transform': transform,
+        'dtype': dtype or data.dtype,
+        'nodata': nodata,
+    }
+    with rasterio.open(dst_path, 'w', **profile) as dst:
+        dst.write(data.astype(profile['dtype']), 1)
