@@ -16,7 +16,7 @@ from util.DateUtil import is_valid_date
 from util.TiffUtil import write_tiff_from_lonlat
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob, Job
 from util.workflow.common.Resample import ResolutionConfig, BatchMultiResampleTiffJob
-from util.workflow.WorkflowConstant import *
+from util.workflow.core.ContextKey import *
 
 
 DATA_NAME = PRECIPITATION_NAME

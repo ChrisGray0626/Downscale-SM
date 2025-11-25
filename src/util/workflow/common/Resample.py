@@ -12,7 +12,7 @@ from typing import List
 
 from Constant import TIFF_SUFFIX
 from util.TiffUtil import resample_tiff
-from util.workflow.WorkflowConstant import SRC_FILE_PATH_KEY, DST_FILE_PATH_KEY, REF_GRID_PATH_KEY, \
+from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY, DST_FILE_PATH_KEY, REF_GRID_PATH_KEY, \
     RESOLUTION_CONFIGS_KEY
 from util.workflow.core.Base import Context, BaseTask, BatchJob
 

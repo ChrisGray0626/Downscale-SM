@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List, Tuple, Union, Iterable
 
 from tqdm import tqdm
 
-from util.workflow.WorkflowConstant import (
+from util.workflow.core.ContextKey import (
     IS_SKIP_KEY,
 )
 

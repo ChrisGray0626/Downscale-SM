@@ -10,7 +10,7 @@ from typing import List
 
 from Constant import ZIP_SUFFIX
 from util.util import unzip_file
-from util.workflow.WorkflowConstant import SRC_FILE_PATH_KEY
+from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY
 from util.workflow.core.Base import BaseTask, Context, BatchJob
 
 __all__ = [

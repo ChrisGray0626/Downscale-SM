@@ -12,7 +12,7 @@ from util.workflow.common.Merge import TiffMerger
 from util.workflow.common.Resample import MultiResampleTiffJob, ResolutionConfig
 from util.workflow.core.Base import Job, Context
 
-from util.workflow.WorkflowConstant import *
+from util.workflow.core.ContextKey import *
 
 DATA_NAME = DEM_NAME
 RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)

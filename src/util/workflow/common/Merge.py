@@ -13,7 +13,7 @@ from typing import List
 from Constant import TIFF_SUFFIX
 from util.DateUtil import extract_date_from_modis_filename
 from util.TiffUtil import merge_tiff
-from util.workflow.WorkflowConstant import SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY
+from util.workflow.core.ContextKey import SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY
 from util.workflow.core.Base import BaseTask, Context, BatchJob
 
 __all__ = [

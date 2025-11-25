@@ -17,7 +17,7 @@ from util.DateUtil import is_valid_date
 from util.TiffUtil import write_tiff_from_transform
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, Job, BatchJob
 from util.workflow.common.Resample import BatchResampleTiffJob
-from util.workflow.WorkflowConstant import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
+from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
     DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY
 
 # Gap Value

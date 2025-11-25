@@ -14,7 +14,7 @@ from osgeo import gdal
 
 from Constant import NDVI_NAME, HDF4_SUFFIX, TIFF_SUFFIX
 from util.DateUtil import is_valid_date, extract_date_from_modis_filename, handle_valid_date
-from util.workflow.WorkflowConstant import DATA_KEY, TRANSFORM_KEY, PROJECTION_KEY, X_SIZE_KEY, Y_SIZE_KEY, \
+from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, PROJECTION_KEY, X_SIZE_KEY, Y_SIZE_KEY, \
     GAP_VALUE_KEY, SCALE_FACTOR_KEY, DATA_NAME_KEY, DST_FILE_PATH_KEY, SRC_FILE_PATH_KEY
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob
 

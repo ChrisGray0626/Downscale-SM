@@ -10,7 +10,7 @@ from Constant import *
 from util.workflow.common.Merge import BatchMergeTiffJob
 from util.workflow.common.Resample import BatchMultiResampleTiffJob, ResolutionConfig
 from util.workflow.core.Base import Job, Context
-from util.workflow.WorkflowConstant import *
+from util.workflow.core.ContextKey import *
 from util.workflow.modis.DataConvert import BatchConvert2TiffJob
 
 # Gap Value
