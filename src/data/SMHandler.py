@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Handle Precipitation Data
+  @Description Handle Solid Moisture Data
   @Author Chris
-  @Date 2025/6/5
+  @Date 2025/4/25
 """
 import glob
 from typing import List
 
+import h5py as h5
 import numpy as np
-import xarray as xr
+from rasterio.transform import from_origin
 
 from Constant import *
 from util.DateUtil import is_valid_date
-from util.TiffUtil import write_tiff_from_lonlat
-from util.workflow.Base import BaseTask, Context, BaseFilter, BatchJob, Job
-from util.workflow.Job import ResolutionConfig
-from util.workflow.WorkflowConstant import *
+from util.TiffUtil import write_tiff_from_transform
+from util.workflow.Base import BaseTask, Context, BaseFilter, Job, BatchJob
+from util.workflow.Job import BatchResampleTiffJob
+from util.workflow.WorkflowConstant import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
+    DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY
 
+# Gap Value
+GAP_VALUE = -9999
 
-DATA_NAME = PRECIPITATION_NAME
+DATA_NAME = SM_NAME
 RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)
 CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, CONVERTED_DIR_NAME)
-RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME)
+RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, RESOLUTION_36KM)
 
 
 class BatchConvert2TiffJob(BatchJob):
@@ -33,19 +37,17 @@ class BatchConvert2TiffJob(BatchJob):
         self.dst_dir_path_key = dst_dir_path_key
         self.add([
             ValidDateFilter(
-                src_file_path_key=SRC_FILE_PATH_KEY
-            ),
+                src_file_path_key=SRC_FILE_PATH_KEY),
             Reader(
-                src_file_path_key=SRC_FILE_PATH_KEY
-            ),
+                src_file_path_key=SRC_FILE_PATH_KEY),
+            DataProcessor(),
             Writer(
-                dst_dir_path_key=dst_dir_path_key
-            )
+                dst_dir_path_key=dst_dir_path_key)
         ])
 
     def build_batch_context(self, context: Context) -> List[Context]:
         src_dir_path = context.get(self.src_dir_path_key)
-        src_file_paths = glob.glob(os.path.join(src_dir_path, f"*{NETCDF_SUFFIX}"))
+        src_file_paths = glob.glob(os.path.join(src_dir_path, f"*{HDF5_SUFFIX}"))
         dst_dir_path = context.get(self.dst_dir_path_key)
 
         os.makedirs(dst_dir_path, exist_ok=True)
@@ -56,6 +58,7 @@ class BatchConvert2TiffJob(BatchJob):
             batch_context = context.global_copy()
             batch_context.set(SRC_FILE_PATH_KEY, src_file_path)
             batch_context.set(DST_DIR_PATH_KEY, dst_dir_path)
+            batch_context.set(GAP_VALUE_KEY, GAP_VALUE)
             batch_contexts.append(batch_context)
 
         return batch_contexts
@@ -69,11 +72,7 @@ class ValidDateFilter(BaseFilter):
 
     def filter(self, context: Context) -> bool:
         src_file_path = context.get(self.src_file_path_key)
-
-        with xr.open_dataset(src_file_path) as ds:
-            date = ds['time'].values[0]
-        # Convert date
-        date = str(date)[:10].replace('-', '')
+        date = os.path.basename(src_file_path)[13:21]
 
         return not is_valid_date(date)
 
@@ -86,25 +85,27 @@ class Reader(BaseTask):
 
     def execute(self, context: Context) -> Context:
         src_file_path = context.get(self.src_file_path_key)
-
-        with xr.open_dataset(src_file_path) as ds:
-            data = ds['precipitation'].isel(time=0)
-            lons = ds['lon'].values
-            lats = ds['lat'].values
-            date = ds['time'].values[0]
-
-        # Convert data
-        data = data.transpose()
-        data = data[::-1, :]
-        data = np.asarray(data, dtype=np.float32)
-
-        # Convert date
-        date = str(date)[:10].replace('-', '')
-
+        f = h5.File(src_file_path, "r")
+        data = f["Soil_Moisture_Retrieval_Data_AM/soil_moisture"][:]
+        date = os.path.basename(src_file_path)[13:21]
         context.set(DATA_KEY, data)
-        context.set(LONGITUDE_KEY, lons)
-        context.set(LATITUDE_KEY, lats)
         context.set(DATE_KEY, date)
+
+        return context
+
+
+class DataProcessor(BaseTask):
+
+    def __init__(self, data_key: str = DATA_KEY, gap_value_key: str = GAP_VALUE_KEY):
+        super().__init__()
+        self.data_key = data_key
+        self.gap_value_key = gap_value_key
+
+    def execute(self, context: Context) -> Context:
+        data = context.get(self.data_key)
+        gap_value = context.get(self.gap_value_key)
+        data[data == gap_value] = np.nan
+        context.set(self.data_key, data)
 
         return context
 
@@ -117,20 +118,24 @@ class Writer(BaseTask):
 
     def execute(self, context: Context) -> Context:
         data = context.get(DATA_KEY)
-        lons = context.get(LONGITUDE_KEY)
-        lats = context.get(LATITUDE_KEY)
         date = context.get(DATE_KEY)
         dst_dir_path = context.get(self.dst_dir_path_key)
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
 
-        write_tiff_from_lonlat(
+        # EPSG:6933 EASE-Grid 2.0 Global 36km
+        epsg_code = 6933
+        pixel_size = 36032.22
+        west = -17367530.44
+        north = 7314540.83
+        transform = from_origin(west, north, pixel_size, pixel_size)
+
+        write_tiff_from_transform(
             data=data,
-            lons=lons,
-            lats=lats,
+            transform=transform,
             dst_path=dst_file_path,
-            epsg_code=4326,
+            epsg_code=epsg_code,
             nodata=np.nan,
-            dtype=np.float32
+            dtype=np.float32,
         )
 
         context.clear_local()
@@ -141,41 +146,28 @@ class Writer(BaseTask):
 def main():
     job = Job()
     context = Context()
-
-    from util.workflow.Job import BatchMultiResampleTiffJob
     job.add([
         BatchConvert2TiffJob(
             src_dir_path_key=RAW_DIR_PATH_KEY,
-            dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
+            dst_dir_path_key=CONVERTED_DIR_PATH_KEY
         ),
-        BatchMultiResampleTiffJob(
-            resolution_configs_key=RESOLUTION_CONFIGS_KEY,
+        BatchResampleTiffJob(
             src_dir_path_key=CONVERTED_DIR_PATH_KEY,
-            ref_grid_path_key=REF_GRID_PATH_KEY,
             dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
+            ref_grid_path_key=REF_GRID_PATH_KEY
         )
     ])
-
     # Convert to TIFF Config
     # Read Config
     context.set_global(RAW_DIR_PATH_KEY, RAW_DIR_PATH)
+    # Data Processing Config
+    context.set_global(GAP_VALUE_KEY, GAP_VALUE)
     # Write Config
     context.set_global(CONVERTED_DIR_PATH_KEY, CONVERTED_DIR_PATH)
 
-    # Multi-Resolution Resample Config
-    # Multi Resample Config
-    context.set_global(RESOLUTION_CONFIGS_KEY, [
-        ResolutionConfig(
-            resolution_km=1,
-            ref_grid_path=REF_GRID_1KM_PATH,
-        ),
-        ResolutionConfig(
-            resolution_km=36,
-            ref_grid_path=REF_GRID_36KM_PATH,
-        ),
-    ])
     # Resample Config
     context.set_global(RESAMPLED_DIR_PATH_KEY, RESAMPLED_DIR_PATH)
+    context.set_global(REF_GRID_PATH_KEY, REF_GRID_36KM_PATH)
 
     job.run(context)
 

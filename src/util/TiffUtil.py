@@ -223,60 +223,51 @@ def interpolate(src_data, src_lon, src_lat, grid_path, dst_path, src_espg_code=4
         dst.write(data_interp.astype(np.float32), 1)
 
 
-def write_lonlat_tiff(data,
-                      lons,
-                      lats,
-                      dst_path: str,
-                      epsg_code: int = 4326,
-                      nodata: float = np.nan,
-                      dtype=None,):
-    """
-    Write a 2-D array to GeoTIFF using corresponding lon/lat coordinates.
-
-    Parameters
-    ----------
-    data : numpy.ndarray | xarray.DataArray
-        2-D grid data aligned as (lat, lon).
-    lons : numpy.ndarray
-        1-D longitude coordinates (ascending).
-    lats : numpy.ndarray
-        1-D latitude coordinates (descending or ascending).
-    dst_path : str
-    epsg_code : int, optional
-    nodata : float, optional
-    dtype: str, optional
-    """
+def write_tiff_from_transform(data,
+                              dst_path: str,
+                              epsg_code: int,
+                              transform: rasterio.Affine,
+                              nodata: float = np.nan,
+                              dtype=None, ):
     data = np.asarray(data)
-    lons = np.asarray(lons)
-    lats = np.asarray(lats)
 
-    if data.ndim != 2:
-        raise ValueError(f"Expected 2-D data, got shape {data.shape}")
+    if data.ndim != 2 and data.ndim != 3:
+        raise ValueError(f"Expected 2-D or 3-D data, got shape {data.shape}")
 
-    if lons.ndim != 1 or lats.ndim != 1:
-        raise ValueError("Longitude and latitude inputs must be 1-D arrays.")
-
-    expected_shape = (len(lats), len(lons))
-    if data.shape != expected_shape:
-        raise ValueError(f"Data shape {data.shape} does not match "
-                         f"(len(lat), len(lon)) {expected_shape}.")
-
-    if len(lons) < 2 or len(lats) < 2:
-        raise ValueError("Longitude and latitude arrays must each contain at least two points.")
-
-    pixel_size_x = (lons.max() - lons.min()) / (len(lons) - 1)
-    pixel_size_y = (lats.max() - lats.min()) / (len(lats) - 1)
-    transform = from_origin(lons.min(), lats.max(), pixel_size_x, pixel_size_y)
+    # Ensure data is 3-D for consistent processing
+    if data.ndim == 2:
+        data = data[np.newaxis, :, :]
+    band, height, width = data.shape
 
     profile = {
         'driver': 'GTiff',
-        'width': data.shape[1],
-        'height': data.shape[0],
-        'count': 1,
+        'width': width,
+        'height': height,
+        'count': band,
         'crs': CRS.from_epsg(epsg_code),
         'transform': transform,
         'dtype': dtype or data.dtype,
         'nodata': nodata,
     }
     with rasterio.open(dst_path, 'w', **profile) as dst:
-        dst.write(data.astype(profile['dtype']), 1)
+        dst.write(data)
+
+
+def write_tiff_from_lonlat(data,
+                           lons,
+                           lats,
+                           dst_path: str,
+                           epsg_code: int,
+                           nodata: float = np.nan,
+                           dtype=None, ):
+    lons = np.asarray(lons)
+    lats = np.asarray(lats)
+    if lons.ndim != 1 or lats.ndim != 1:
+        raise ValueError("Longitude and latitude inputs must be 1-D arrays.")
+    if len(lons) < 2 or len(lats) < 2:
+        raise ValueError("Longitude and latitude arrays must each contain at least two points.")
+
+    pixel_size_x = (lons.max() - lons.min()) / (len(lons) - 1)
+    pixel_size_y = (lats.max() - lats.min()) / (len(lats) - 1)
+    transform = from_origin(lons.min(), lats.max(), pixel_size_x, pixel_size_y)
+    write_tiff_from_transform(data, dst_path, epsg_code, transform, nodata, dtype)
