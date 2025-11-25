@@ -25,7 +25,6 @@ __all__ = [
     'Job',
     'BatchJob',
     'BaseFilter',
-    'TaskArg',
 ]
 
 
@@ -123,18 +122,15 @@ class Batchable(Executable, ABC):
     def collect(self, context: Context, batch_results: List[Context]) -> Context:
         return context
 
-# TODO
-TaskArg = Union['BaseTask', Iterable['BaseTask']]
-
 
 class Job(BaseTask):
-    def __init__(self, name: Optional[str] = None, *tasks: TaskArg):
+    def __init__(self, name: Optional[str] = None, *tasks: Union['BaseTask', Iterable['BaseTask']]):
         super().__init__(name)
         self.tasks: List[BaseTask] = []
         if tasks:
             self.add(*tasks)
 
-    def add(self, *tasks: TaskArg) -> 'Job':
+    def add(self, *tasks: Union['BaseTask', Iterable['BaseTask']]) -> 'Job':
         for task in tasks:
             if isinstance(task, list):
                 self.tasks.extend(task)

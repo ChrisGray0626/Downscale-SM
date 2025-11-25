@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description
+  @Description Resample Task & Job
   @Author Chris
   @Date 2025/11/25
 """
