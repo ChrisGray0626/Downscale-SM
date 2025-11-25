@@ -7,9 +7,11 @@
 """
 
 from Constant import *
-from util.workflow.Base import Job, Context
-from util.workflow.Job import ResolutionConfig, BatchDecompressJob, MultiResampleTiffJob
-from util.workflow.Task import TiffMerger
+from util.workflow.common.Decompress import BatchDecompressJob
+from util.workflow.common.Merge import TiffMerger
+from util.workflow.common.Resample import MultiResampleTiffJob, ResolutionConfig
+from util.workflow.core.Base import Job, Context
+
 from util.workflow.WorkflowConstant import *
 
 DATA_NAME = DEM_NAME

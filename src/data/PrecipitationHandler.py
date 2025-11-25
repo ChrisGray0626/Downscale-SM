@@ -14,8 +14,8 @@ import xarray as xr
 from Constant import *
 from util.DateUtil import is_valid_date
 from util.TiffUtil import write_tiff_from_lonlat
-from util.workflow.Base import BaseTask, Context, BaseFilter, BatchJob, Job
-from util.workflow.Job import ResolutionConfig
+from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob, Job
+from util.workflow.common.Resample import ResolutionConfig, BatchMultiResampleTiffJob
 from util.workflow.WorkflowConstant import *
 
 
@@ -142,7 +142,6 @@ def main():
     job = Job()
     context = Context()
 
-    from util.workflow.Job import BatchMultiResampleTiffJob
     job.add([
         BatchConvert2TiffJob(
             src_dir_path_key=RAW_DIR_PATH_KEY,

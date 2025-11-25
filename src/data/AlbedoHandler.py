@@ -7,9 +7,11 @@
 """
 
 from Constant import *
-from util.workflow.Base import Job, Context
-from util.workflow.Job import BatchMODISData2TiffJob, BatchMergeTiffJob, BatchMultiResampleTiffJob, ResolutionConfig
+from util.workflow.common.Merge import BatchMergeTiffJob
+from util.workflow.common.Resample import BatchMultiResampleTiffJob, ResolutionConfig
+from util.workflow.core.Base import Job, Context
 from util.workflow.WorkflowConstant import *
+from util.workflow.modis.DataConvert import BatchConvert2TiffJob
 
 # Gap Value
 GAP_VALUE = 32766
@@ -27,7 +29,7 @@ def main():
     context = Context()
 
     job.add([
-        BatchMODISData2TiffJob(
+        BatchConvert2TiffJob(
             src_dir_path_key=RAW_DIR_PATH_KEY,
             dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
             data_name_key=DATA_NAME_KEY,

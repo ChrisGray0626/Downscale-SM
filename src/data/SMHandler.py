@@ -15,8 +15,8 @@ from rasterio.transform import from_origin
 from Constant import *
 from util.DateUtil import is_valid_date
 from util.TiffUtil import write_tiff_from_transform
-from util.workflow.Base import BaseTask, Context, BaseFilter, Job, BatchJob
-from util.workflow.Job import BatchResampleTiffJob
+from util.workflow.core.Base import BaseTask, Context, BaseFilter, Job, BatchJob
+from util.workflow.common.Resample import BatchResampleTiffJob
 from util.workflow.WorkflowConstant import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
     DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY
 
