@@ -224,11 +224,13 @@ def interpolate(src_data, src_lon, src_lat, grid_path, dst_path, src_espg_code=4
 
 
 def write_tiff_from_transform(data,
-                              dst_path: str,
-                              epsg_code: int,
+                              dst_file_path: str,
                               transform: rasterio.Affine,
+                              epsg_code: int = None,
+                              crs: CRS = None,
                               nodata: float = np.nan,
-                              dtype=None, ):
+                              dtype=None,
+                              ):
     data = np.asarray(data)
 
     if data.ndim != 2 and data.ndim != 3:
@@ -239,27 +241,31 @@ def write_tiff_from_transform(data,
         data = data[np.newaxis, :, :]
     band, height, width = data.shape
 
+    if epsg_code is not None:
+        crs = CRS.from_epsg(epsg_code)
     profile = {
         'driver': 'GTiff',
         'width': width,
         'height': height,
         'count': band,
-        'crs': CRS.from_epsg(epsg_code),
+        'crs': crs,
         'transform': transform,
         'dtype': dtype or data.dtype,
         'nodata': nodata,
     }
-    with rasterio.open(dst_path, 'w', **profile) as dst:
+    with rasterio.open(dst_file_path, 'w', **profile) as dst:
         dst.write(data)
 
 
 def write_tiff_from_lonlat(data,
                            lons,
                            lats,
-                           dst_path: str,
-                           epsg_code: int,
+                           dst_file_path: str,
+                           epsg_code: int = None,
+                           crs: CRS = None,
                            nodata: float = np.nan,
-                           dtype=None, ):
+                           dtype=None,
+                           ):
     lons = np.asarray(lons)
     lats = np.asarray(lats)
     if lons.ndim != 1 or lats.ndim != 1:
@@ -270,4 +276,12 @@ def write_tiff_from_lonlat(data,
     pixel_size_x = (lons.max() - lons.min()) / (len(lons) - 1)
     pixel_size_y = (lats.max() - lats.min()) / (len(lats) - 1)
     transform = from_origin(lons.min(), lats.max(), pixel_size_x, pixel_size_y)
-    write_tiff_from_transform(data, dst_path, epsg_code, transform, nodata, dtype)
+    write_tiff_from_transform(
+        data,
+        dst_file_path,
+        epsg_code=epsg_code,
+        crs=crs,
+        transform=transform,
+        nodata=nodata,
+        dtype=dtype
+    )

@@ -10,15 +10,19 @@ from typing import List
 
 import h5py as h5
 import numpy as np
+from affine import Affine
+from pyproj import CRS
 from rasterio.transform import from_origin
 
 from Constant import *
 from util.DateUtil import is_valid_date
 from util.TiffUtil import write_tiff_from_transform
+from util.workflow.common.Write import TiffWriter
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, Job, BatchJob
 from util.workflow.common.Resample import BatchResampleTiffJob
 from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
-    DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY
+    DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY, TRANSFORM_KEY, \
+    DST_FILE_PATH_KEY, CRS_KEY
 
 # Gap Value
 GAP_VALUE = -9999
@@ -36,13 +40,11 @@ class BatchConvert2TiffJob(BatchJob):
         self.src_dir_path_key = src_dir_path_key
         self.dst_dir_path_key = dst_dir_path_key
         self.add([
-            ValidDateFilter(
-                src_file_path_key=SRC_FILE_PATH_KEY),
-            Reader(
-                src_file_path_key=SRC_FILE_PATH_KEY),
+            ValidDateFilter(),
+            Reader(),
             DataProcessor(),
-            Writer(
-                dst_dir_path_key=dst_dir_path_key)
+            DstFilePathBuilder(),
+            TiffWriter(),
         ])
 
     def build_batch_context(self, context: Context) -> List[Context]:
@@ -110,37 +112,35 @@ class DataProcessor(BaseTask):
         return context
 
 
-class Writer(BaseTask):
+class DstFilePathBuilder(BaseTask):
 
-    def __init__(self, dst_dir_path_key: str = DST_DIR_PATH_KEY):
+    def __init__(self,
+                 dst_dir_path_key: str = DST_DIR_PATH_KEY,
+                 dst_file_path_key: str = DST_FILE_PATH_KEY,
+                 date_key: str = DATE_KEY,
+                 ):
         super().__init__()
         self.dst_dir_path_key = dst_dir_path_key
+        self.dst_file_path_key = dst_file_path_key
+        self.date_key = date_key
 
     def execute(self, context: Context) -> Context:
-        data = context.get(DATA_KEY)
-        date = context.get(DATE_KEY)
+        date = context.get(self.date_key)
         dst_dir_path = context.get(self.dst_dir_path_key)
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
-
-        # EPSG:6933 EASE-Grid 2.0 Global 36km
-        epsg_code = 6933
-        pixel_size = 36032.22
-        west = -17367530.44
-        north = 7314540.83
-        transform = from_origin(west, north, pixel_size, pixel_size)
-
-        write_tiff_from_transform(
-            data=data,
-            transform=transform,
-            dst_path=dst_file_path,
-            epsg_code=epsg_code,
-            nodata=np.nan,
-            dtype=np.float32,
-        )
-
-        context.clear_local()
+        context.set(self.dst_file_path_key, dst_file_path)
 
         return context
+
+
+def build_6933_transform() -> Affine:
+    # EPSG:6933 EASE-Grid 2.0 Global 36km
+    pixel_size = 36032.22
+    west = -17367530.44
+    north = 7314540.83
+    transform = from_origin(west, north, pixel_size, pixel_size)
+
+    return transform
 
 
 def main():
@@ -164,6 +164,8 @@ def main():
     context.set_global(GAP_VALUE_KEY, GAP_VALUE)
     # Write Config
     context.set_global(CONVERTED_DIR_PATH_KEY, CONVERTED_DIR_PATH)
+    context.set_global(TRANSFORM_KEY, build_6933_transform())
+    context.set_global(CRS_KEY, CRS.from_epsg(6933))
 
     # Resample Config
     context.set_global(RESAMPLED_DIR_PATH_KEY, RESAMPLED_DIR_PATH)

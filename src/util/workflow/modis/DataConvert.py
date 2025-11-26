@@ -10,12 +10,16 @@ import os
 from typing import List
 
 import numpy as np
+from affine import Affine
 from osgeo import gdal
+from pyproj import CRS
 
 from Constant import NDVI_NAME, HDF4_SUFFIX, TIFF_SUFFIX
 from util.DateUtil import is_valid_date, extract_date_from_modis_filename, handle_valid_date
-from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, PROJECTION_KEY, X_SIZE_KEY, Y_SIZE_KEY, \
-    GAP_VALUE_KEY, SCALE_FACTOR_KEY, DATA_NAME_KEY, DST_FILE_PATH_KEY, SRC_FILE_PATH_KEY
+from util.TiffUtil import write_tiff_from_transform
+from util.workflow.common.Write import TiffWriter
+from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, \
+    GAP_VALUE_KEY, SCALE_FACTOR_KEY, DATA_NAME_KEY, DST_FILE_PATH_KEY, SRC_FILE_PATH_KEY, CRS_KEY, EPSG_CODE_KEY
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob
 
 __all__ = [
@@ -23,7 +27,7 @@ __all__ = [
     "ValidDateFilter",
     "Reader",
     "DataProcessor",
-    "Writer",
+    "TiffWriter",
     "ValidDateHandler",
 ]
 
@@ -43,19 +47,23 @@ class BatchConvert2TiffJob(BatchJob):
                 data_name_key=data_name_key,
                 src_file_path_key=SRC_FILE_PATH_KEY
             ),
-            Reader(src_file_path_key=SRC_FILE_PATH_KEY),
+            Reader(
+                src_file_path_key=SRC_FILE_PATH_KEY,
+                data_key=DATA_KEY,
+                transform_key=TRANSFORM_KEY,
+                crs_key=CRS_KEY,
+            ),
             DataProcessor(
                 data_key=DATA_KEY,
                 gap_value_key=gap_value_key,
                 scale_factor_key=scale_factor_key
             ),
-            Writer(
+            TiffWriter(
                 dst_file_path_key=DST_FILE_PATH_KEY,
                 data_key=DATA_KEY,
                 transform_key=TRANSFORM_KEY,
-                projection_key=PROJECTION_KEY,
-                x_size_key=X_SIZE_KEY,
-                y_size_key=Y_SIZE_KEY
+                epsg_code_key=EPSG_CODE_KEY,
+                crs_key=CRS_KEY,
             ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
@@ -71,8 +79,8 @@ class BatchConvert2TiffJob(BatchJob):
             batch_context = context.global_copy()
             batch_context.set(SRC_FILE_PATH_KEY, src_file_path)
 
-            dst_path = os.path.join(dst_dir_path, filename.replace(HDF4_SUFFIX, TIFF_SUFFIX))
-            batch_context.set(DST_FILE_PATH_KEY, dst_path)
+            dst_file_path = os.path.join(dst_dir_path, filename.replace(HDF4_SUFFIX, TIFF_SUFFIX))
+            batch_context.set(DST_FILE_PATH_KEY, dst_file_path)
 
             batch_contexts.append(batch_context)
 
@@ -93,7 +101,7 @@ class ValidDateFilter(BaseFilter):
     """
 
     def __init__(self,
-                 src_file_path_key: str,
+                 src_file_path_key: str = SRC_FILE_PATH_KEY,
                  data_name_key: str = DATA_NAME_KEY):
         super().__init__()
         self.src_file_path_key = src_file_path_key
@@ -110,21 +118,17 @@ class ValidDateFilter(BaseFilter):
 
 
 class Reader(BaseTask):
-    # TODO transform_key projection_key
     def __init__(self,
-                 src_file_path_key: str,
+                 src_file_path_key: str = SRC_FILE_PATH_KEY,
                  data_key: str = DATA_KEY,
                  transform_key: str = TRANSFORM_KEY,
-                 projection_key: str = PROJECTION_KEY,
-                 x_size_key: str = X_SIZE_KEY,
-                 y_size_key: str = Y_SIZE_KEY):
+                 crs_key: str = CRS_KEY,
+                 ):
         super().__init__()
         self.src_file_path_key = src_file_path_key
         self.data_key = data_key
         self.transform_key = transform_key
-        self.projection_key = projection_key
-        self.x_size_key = x_size_key
-        self.y_size_key = y_size_key
+        self.crs_key = crs_key
 
     def execute(self, context) -> Context:
         src_path = context.get(self.src_file_path_key)
@@ -136,15 +140,14 @@ class Reader(BaseTask):
 
         data = ds.ReadAsArray().astype(np.float32)
         transform = ds.GetGeoTransform()
+        # Convert to Affine
+        transform = Affine.from_gdal(*transform)
         projection = ds.GetProjection()
-        x_size = ds.RasterXSize
-        y_size = ds.RasterYSize
+        crs = CRS.from_wkt(projection)
 
         context.set(self.data_key, data)
         context.set(self.transform_key, transform)
-        context.set(self.projection_key, projection)
-        context.set(self.x_size_key, x_size)
-        context.set(self.y_size_key, y_size)
+        context.set(self.crs_key, crs)
 
         return context
 
@@ -167,54 +170,6 @@ class DataProcessor(BaseTask):
         data = data * scale_factor
 
         context.set(self.data_key, data)
-
-        return context
-
-
-class Writer(BaseTask):
-    def __init__(self,
-                 dst_file_path_key: str,
-                 data_key: str = DATA_KEY,
-                 transform_key: str = TRANSFORM_KEY,
-                 projection_key: str = PROJECTION_KEY,
-                 x_size_key: str = X_SIZE_KEY,
-                 y_size_key: str = Y_SIZE_KEY):
-        super().__init__()
-        self.dst_file_path_key = dst_file_path_key
-        self.data_key = data_key
-        self.transform_key = transform_key
-        self.projection_key = projection_key
-        self.x_size_key = x_size_key
-        self.y_size_key = y_size_key
-
-    def execute(self, context):
-        # TODO rasterio handle
-        dst_path = context.get(self.dst_file_path_key)
-        data = context.get(self.data_key)
-        transform = context.get(self.transform_key)
-        projection = context.get(self.projection_key)
-        x_size = context.get(self.x_size_key)
-        y_size = context.get(self.y_size_key)
-
-        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-
-        driver = gdal.GetDriverByName('GTiff')
-        out_dataset = driver.Create(
-            dst_path,
-            x_size,
-            y_size,
-            1,
-            gdal.GDT_Float32
-        )
-
-        out_band = out_dataset.GetRasterBand(1)
-        out_band.WriteArray(data)
-        out_band.SetNoDataValue(np.nan)
-
-        out_dataset.SetGeoTransform(transform)
-        out_dataset.SetProjection(projection)
-
-        out_dataset.FlushCache()
 
         return context
 

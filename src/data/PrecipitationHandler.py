@@ -127,7 +127,7 @@ class Writer(BaseTask):
             data=data,
             lons=lons,
             lats=lats,
-            dst_path=dst_file_path,
+            dst_file_path=dst_file_path,
             epsg_code=4326,
             nodata=np.nan,
             dtype=np.float32
