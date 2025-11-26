@@ -13,7 +13,8 @@ import xarray as xr
 
 from Constant import *
 from util.DateUtil import is_valid_date
-from util.TiffUtil import write_tiff_from_lonlat
+from util.util import build_transform_from_lonlat
+from util.workflow.common.Write import TiffWriter
 from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob, Job
 from util.workflow.common.Resample import ResolutionConfig, BatchMultiResampleTiffJob
 from util.workflow.core.ContextKey import *
@@ -32,15 +33,10 @@ class BatchConvert2TiffJob(BatchJob):
         self.src_dir_path_key = src_dir_path_key
         self.dst_dir_path_key = dst_dir_path_key
         self.add([
-            ValidDateFilter(
-                src_file_path_key=SRC_FILE_PATH_KEY
-            ),
-            Reader(
-                src_file_path_key=SRC_FILE_PATH_KEY
-            ),
-            Writer(
-                dst_dir_path_key=dst_dir_path_key
-            )
+            ValidDateFilter(),
+            Reader(),
+            DstFilePathBuilder(),
+            TiffWriter(),
         ])
 
     def build_batch_context(self, context: Context) -> List[Context]:
@@ -101,39 +97,36 @@ class Reader(BaseTask):
         # Convert date
         date = str(date)[:10].replace('-', '')
 
+        # Convert transform
+        lons = np.asarray(lons, dtype=np.float32)
+        lats = np.asarray(lats, dtype=np.float32)
+        transform = build_transform_from_lonlat(lons, lats)
+
         context.set(DATA_KEY, data)
-        context.set(LONGITUDE_KEY, lons)
-        context.set(LATITUDE_KEY, lats)
+        context.set(TRANSFORM_KEY, transform)
+        context.set(EPSG_CODE_KEY, 4326)
         context.set(DATE_KEY, date)
 
         return context
 
 
-class Writer(BaseTask):
+class DstFilePathBuilder(BaseTask):
 
-    def __init__(self, dst_dir_path_key: str = DST_DIR_PATH_KEY):
+    def __init__(self,
+                 dst_dir_path_key: str = DST_DIR_PATH_KEY,
+                 dst_file_path_key: str = DST_FILE_PATH_KEY,
+                 date_key: str = DATE_KEY,
+                 ):
         super().__init__()
         self.dst_dir_path_key = dst_dir_path_key
+        self.dst_file_path_key = dst_file_path_key
+        self.date_key = date_key
 
     def execute(self, context: Context) -> Context:
-        data = context.get(DATA_KEY)
-        lons = context.get(LONGITUDE_KEY)
-        lats = context.get(LATITUDE_KEY)
-        date = context.get(DATE_KEY)
+        date = context.get(self.date_key)
         dst_dir_path = context.get(self.dst_dir_path_key)
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
-
-        write_tiff_from_lonlat(
-            data=data,
-            lons=lons,
-            lats=lats,
-            dst_file_path=dst_file_path,
-            epsg_code=4326,
-            nodata=np.nan,
-            dtype=np.float32
-        )
-
-        context.clear_local()
+        context.set(self.dst_file_path_key, dst_file_path)
 
         return context
 
@@ -148,9 +141,7 @@ def main():
             dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
         ),
         BatchMultiResampleTiffJob(
-            resolution_configs_key=RESOLUTION_CONFIGS_KEY,
             src_dir_path_key=CONVERTED_DIR_PATH_KEY,
-            ref_grid_path_key=REF_GRID_PATH_KEY,
             dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
         )
     ])

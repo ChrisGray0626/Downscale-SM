@@ -29,19 +29,17 @@ class BatchMultiResampleTiffJob(BatchJob):
 
     def __init__(self,
                  src_dir_path_key: str,
-                 ref_grid_path_key: str,
                  dst_dir_path_key: str,
                  resolution_configs_key: str = RESOLUTION_CONFIGS_KEY,
                  ):
         super().__init__()
         self.src_dir_path_key = src_dir_path_key
-        self.ref_grid_path_key = ref_grid_path_key
         self.dst_dir_path_key = dst_dir_path_key
         self.resolution_configs_key = resolution_configs_key
         self.add(BatchResampleTiffJob(
             src_dir_path_key=src_dir_path_key,
-            ref_grid_path_key=ref_grid_path_key,
             dst_dir_path_key=dst_dir_path_key,
+            ref_grid_path_key=REF_GRID_PATH_KEY,
         ))
 
     def build_batch_context(self, context: Context) -> List[Context]:
@@ -53,7 +51,7 @@ class BatchMultiResampleTiffJob(BatchJob):
             batch_context = context.global_copy()
             dst_dir_path = os.path.join(context.get(self.dst_dir_path_key), f"{config.resolution_km}km")
             batch_context.set(self.dst_dir_path_key, dst_dir_path)
-            batch_context.set(self.ref_grid_path_key, config.ref_grid_path)
+            batch_context.set(REF_GRID_PATH_KEY, config.ref_grid_path)
             batch_contexts.append(batch_context)
 
         return batch_contexts
@@ -102,7 +100,8 @@ class BatchResampleTiffJob(BatchJob):
     def __init__(self,
                  src_dir_path_key: str,
                  dst_dir_path_key: str,
-                 ref_grid_path_key: str):
+                 ref_grid_path_key: str = REF_GRID_PATH_KEY,
+                 ):
         super().__init__()
         self.src_dir_path_key = src_dir_path_key
         self.dst_dir_path_key = dst_dir_path_key
@@ -126,7 +125,7 @@ class BatchResampleTiffJob(BatchJob):
         for src_file_path in src_file_paths:
             batch_context = context.global_copy()
             batch_context.set(SRC_FILE_PATH_KEY, src_file_path)
-            batch_context.set(REF_GRID_PATH_KEY, ref_grid_path)
+            batch_context.set(self.ref_grid_path_key, ref_grid_path)
             batch_context.set(DST_FILE_PATH_KEY, os.path.join(dst_dir_path, os.path.basename(src_file_path)))
             batch_contexts.append(batch_context)
 
@@ -135,9 +134,10 @@ class BatchResampleTiffJob(BatchJob):
 
 class TiffResampler(BaseTask):
     def __init__(self,
-                 src_file_path_key: str,
-                 ref_grid_path_key: str,
-                 dst_file_path_key: str):
+                 src_file_path_key: str = SRC_FILE_PATH_KEY,
+                 ref_grid_path_key: str = REF_GRID_PATH_KEY,
+                 dst_file_path_key: str = DST_FILE_PATH_KEY,
+                 ):
         super().__init__()
         self.src_file_path_key = src_file_path_key
         self.ref_grid_path_key = ref_grid_path_key

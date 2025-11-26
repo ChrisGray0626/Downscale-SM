@@ -10,7 +10,7 @@ from typing import List
 
 from Constant import ZIP_SUFFIX
 from util.util import unzip_file
-from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY
+from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY, SRC_DIR_PATH_KEY, DST_DIR_PATH_KEY
 from util.workflow.core.Base import BaseTask, Context, BatchJob
 
 __all__ = [
@@ -45,7 +45,9 @@ class BatchDecompressJob(BatchJob):
 
 
 class Decompressor(BaseTask):
-    def __init__(self, src_file_path_key: str, dst_dir_path_key: str):
+    def __init__(self, src_file_path_key: str = SRC_FILE_PATH_KEY,
+                 dst_dir_path_key: str = DST_DIR_PATH_KEY
+                 ):
         super().__init__()
         self.src_file_path_key = src_file_path_key
         self.dst_dir_path_key = dst_dir_path_key

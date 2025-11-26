@@ -58,9 +58,10 @@ class BatchMergeTiffJob(BatchJob):
 
 class TiffMerger(BaseTask):
     def __init__(self,
-                 dst_file_path_key: str,
-                 src_file_paths_key: str = None,
-                 src_dir_path_key: str = None):
+                 src_file_paths_key: str = SRC_FILE_PATHS_KEY,
+                 src_dir_path_key: str = SRC_FILE_PATHS_KEY,
+                 dst_file_path_key: str = DST_FILE_PATH_KEY,
+                 ):
         super().__init__()
         if src_file_paths_key is None and src_dir_path_key is None:
             raise ValueError("Either src_file_paths_key or src_dir_path_key must be provided.")
@@ -69,9 +70,9 @@ class TiffMerger(BaseTask):
         self.dst_file_path_key = dst_file_path_key
 
     def execute(self, context) -> Context:
-        dst_file_path = context.get(self.dst_file_path_key)
         src_file_paths = context.get(self.src_file_paths_key, None)
         src_dir_path = context.get(self.src_dir_path_key, None)
+        dst_file_path = context.get(self.dst_file_path_key)
 
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
 

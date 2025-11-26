@@ -33,18 +33,13 @@ def main():
         BatchConvert2TiffJob(
             src_dir_path_key=RAW_DIR_PATH_KEY,
             dst_dir_path_key=CONVERTED_DIR_PATH_KEY,
-            data_name_key=DATA_NAME_KEY,
-            gap_value_key=GAP_VALUE_KEY,
-            scale_factor_key=SCALE_FACTOR_KEY
         ),
         BatchMergeTiffJob(
             src_dir_path_key=CONVERTED_DIR_PATH_KEY,
             dst_dir_path_key=MERGED_DIR_PATH_KEY
         ),
         BatchMultiResampleTiffJob(
-            resolution_configs_key=RESOLUTION_CONFIGS_KEY,
             src_dir_path_key=MERGED_DIR_PATH_KEY,
-            ref_grid_path_key=REF_GRID_PATH_KEY,
             dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
         ),
     ])

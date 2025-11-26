@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description
+  @Description Write Task
   @Author Chris
   @Date 2025/11/26
 """
@@ -12,6 +12,10 @@ import numpy as np
 from util.TiffUtil import write_tiff_from_transform
 from util.workflow.core.Base import BaseTask
 from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, EPSG_CODE_KEY, CRS_KEY, DST_FILE_PATH_KEY
+
+__all__ = [
+    "TiffWriter",
+]
 
 
 class TiffWriter(BaseTask):

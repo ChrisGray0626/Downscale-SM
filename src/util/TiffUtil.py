@@ -255,33 +255,3 @@ def write_tiff_from_transform(data,
     }
     with rasterio.open(dst_file_path, 'w', **profile) as dst:
         dst.write(data)
-
-
-def write_tiff_from_lonlat(data,
-                           lons,
-                           lats,
-                           dst_file_path: str,
-                           epsg_code: int = None,
-                           crs: CRS = None,
-                           nodata: float = np.nan,
-                           dtype=None,
-                           ):
-    lons = np.asarray(lons)
-    lats = np.asarray(lats)
-    if lons.ndim != 1 or lats.ndim != 1:
-        raise ValueError("Longitude and latitude inputs must be 1-D arrays.")
-    if len(lons) < 2 or len(lats) < 2:
-        raise ValueError("Longitude and latitude arrays must each contain at least two points.")
-
-    pixel_size_x = (lons.max() - lons.min()) / (len(lons) - 1)
-    pixel_size_y = (lats.max() - lats.min()) / (len(lats) - 1)
-    transform = from_origin(lons.min(), lats.max(), pixel_size_x, pixel_size_y)
-    write_tiff_from_transform(
-        data,
-        dst_file_path,
-        epsg_code=epsg_code,
-        crs=crs,
-        transform=transform,
-        nodata=nodata,
-        dtype=dtype
-    )

@@ -1,6 +1,9 @@
 import zipfile
 
+import numpy as np
+from affine import Affine
 from pyproj import Transformer
+from rasterio.transform import from_origin
 
 
 def format_float(x, precision):
@@ -36,3 +39,32 @@ def write_txt(dst_path, rows):
 def read_txt(src_path):
     with open(src_path, 'r') as f:
         return [line.strip() for line in f.readlines()]
+
+
+def build_transform_from_lonlat(lons: np.ndarray, lats: np.ndarray) -> Affine:
+    # Handle 2D regular grid
+    if lons.ndim == 2:
+        if np.allclose(lons, lons[0, :]):
+            lons = lons[0, :]
+        else:
+            raise ValueError("lons is non-regular 2D grid, cannot directly generate transform")
+    if lats.ndim == 2:
+        if np.allclose(lats, lats[:, 0]):
+            lats = lats[:, 0]
+        else:
+            raise ValueError("lats is non-regular 2D grid, cannot directly generate transform")
+
+    # Check 1D
+    if lons.ndim != 1 or lats.ndim != 1:
+        raise ValueError("lons and lats must be 1D or 2D arrays to build transform")
+
+    x_size = (lons.max() - lons.min()) / (len(lons) - 1)
+    y_size = (lats.max() - lats.min()) / (len(lats) - 1)
+    transform = from_origin(
+        lons.min(),
+        lats.max(),
+        x_size,
+        y_size,
+    )
+
+    return transform
