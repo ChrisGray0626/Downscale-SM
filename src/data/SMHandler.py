@@ -32,6 +32,36 @@ CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, CONVERTED_DIR_N
 RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, RESOLUTION_36KM)
 
 
+def main():
+    job = Job()
+    context = Context()
+    job.add([
+        BatchConvert2TiffJob(
+            src_dir_path_key=RAW_DIR_PATH_KEY,
+            dst_dir_path_key=CONVERTED_DIR_PATH_KEY
+        ),
+        BatchResampleTiffJob(
+            src_dir_path_key=INTERPOLATED_DIR_PATH_KEY,
+            dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
+        )
+    ])
+    # Convert to TIFF Config
+    # Read Config
+    context.set_global(RAW_DIR_PATH_KEY, RAW_DIR_PATH)
+    # Data Processing Config
+    context.set_global(GAP_VALUE_KEY, GAP_VALUE)
+    # Write Config
+    context.set_global(CONVERTED_DIR_PATH_KEY, CONVERTED_DIR_PATH)
+    context.set_global(TRANSFORM_KEY, build_6933_transform())
+    context.set_global(CRS_KEY, CRS.from_epsg(6933))
+
+    # Resample Config
+    context.set_global(RESAMPLED_DIR_PATH_KEY, RESAMPLED_DIR_PATH)
+    context.set_global(REF_GRID_PATH_KEY, REF_GRID_36KM_PATH)
+
+    job.run(context)
+
+
 class BatchConvert2TiffJob(BatchJob):
 
     def __init__(self, src_dir_path_key: str, dst_dir_path_key: str):
