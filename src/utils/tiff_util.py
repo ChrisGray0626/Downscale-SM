@@ -7,11 +7,12 @@
 """
 import glob
 from datetime import datetime, timedelta
-from typing import List
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import rasterio
+from affine import Affine
 from matplotlib import pyplot as plt
 from osgeo import gdal
 from pyproj import CRS, Transformer
@@ -22,6 +23,49 @@ from scipy.interpolate import griddata, interp1d
 from constants import *
 
 gdal.UseExceptions()
+
+
+def read_tiff_meta(grid_path: str) -> Tuple[Affine, CRS, int, int]:
+    with rasterio.open(grid_path) as src:
+        transform = src.transform
+        crs = src.crs
+        height = src.height
+        width = src.width
+
+    return transform, crs, height, width
+
+
+def read_tiff_data(file_path: str):
+    with rasterio.open(file_path) as src:
+        data = src.read(1)
+
+    return data
+
+
+def read_tiff(file_path: str, dst_epsg_code: int = 4326):
+    with rasterio.open(file_path) as src:
+        data = src.read(1)
+        transform_affine = src.transform
+        src_crs = src.crs  # 源投影 CRS
+        width = src.width
+        height = src.height
+
+    # 构建行列索引网格
+    cols, rows = np.meshgrid(np.arange(width), np.arange(height))
+
+    # 使用仿射变换将行列号转换为原始投影下的坐标
+    xs, ys = rasterio.transform.xy(transform_affine, rows, cols, offset='center')
+
+    # Reshape 为二维数组
+    xs = np.array(xs).reshape((height, width))
+    ys = np.array(ys).reshape((height, width))
+
+    # 投影转换（原投影 -> EPSG:4326）
+    if dst_epsg_code != src_crs.to_epsg():
+        transformer = Transformer.from_crs(src_crs, CRS.from_epsg(dst_epsg_code), always_xy=True)
+        xs, ys = transformer.transform(xs, ys)
+
+    return data, xs, ys
 
 
 def merge_tiff(dst_file_path: str, src_dir_path: str = None, src_file_paths: list = None):
@@ -79,70 +123,6 @@ def resample_tiff(src_path, ref_grid_path, dst_path):
             transform=ref_transform
     ) as dst:
         dst.write(dst_data, 1)
-
-
-def show_tiff(file_path: str, dst_epsg_code: int = 4326):
-    with rasterio.open(file_path) as dataset:
-        # 读取数据（第1波段）
-        data = dataset.read(1)
-        # 获取仿射变换（地理坐标到像素坐标转换）
-        transform = dataset.transform
-        # 获取坐标参考系统（CRS）
-        crs = dataset.crs
-        # 获取边界（范围）
-        bounds = dataset.bounds
-        # 获取像素大小
-        res = dataset.res
-    if crs is None:
-        crs = CRS.from_epsg(dst_epsg_code)
-    # 转换为 EPSG:4326
-    if dst_epsg_code != crs.to_epsg():
-        bounds = transform_bounds(crs, CRS.from_epsg(dst_epsg_code), *bounds)
-    data = np.ma.masked_invalid(data)
-    d = data[~np.isnan(data)]
-    print("Transform: ", transform)
-    print("Bounds: ", bounds)
-    print("Resolution (pixel size): ", res)
-    print("Data shape: ", data.shape)
-    # 显示高程图像
-    plt.imshow(data, cmap='terrain')
-    plt.colorbar()
-    plt.xlabel("Column")
-    plt.ylabel("Row")
-    plt.show()
-
-
-def read_tiff_data(file_path: str):
-    with rasterio.open(file_path) as src:
-        data = src.read(1)
-
-    return data
-
-
-def read_tiff(file_path: str, dst_epsg_code: int = 4326):
-    with rasterio.open(file_path) as src:
-        data = src.read(1)
-        transform_affine = src.transform
-        src_crs = src.crs  # 源投影 CRS
-        width = src.width
-        height = src.height
-
-    # 构建行列索引网格
-    cols, rows = np.meshgrid(np.arange(width), np.arange(height))
-
-    # 使用仿射变换将行列号转换为原始投影下的坐标
-    xs, ys = rasterio.transform.xy(transform_affine, rows, cols, offset='center')
-
-    # Reshape 为二维数组
-    xs = np.array(xs).reshape((height, width))
-    ys = np.array(ys).reshape((height, width))
-
-    # 投影转换（原投影 -> EPSG:4326）
-    if dst_epsg_code != src_crs.to_epsg():
-        transformer = Transformer.from_crs(src_crs, CRS.from_epsg(dst_epsg_code), always_xy=True)
-        xs, ys = transformer.transform(xs, ys)
-
-    return data, xs, ys
 
 
 def interpolate_tiff(data, lons, lats, grid_path, dst_path, espg_code: int = 4326):
@@ -236,7 +216,7 @@ def write_tiff(data,
     if data.ndim != 2 and data.ndim != 3:
         raise ValueError(f"Expected 2-D or 3-D data_processor, got shape {data.shape}")
 
-    # Ensure data_processor is 3-D for consistent processing
+    # Ensure data_preprocessor is 3-D for consistent processing
     if data.ndim == 2:
         data = data[np.newaxis, :, :]
     band, height, width = data.shape
@@ -257,83 +237,12 @@ def write_tiff(data,
         dst.write(data)
 
 
-class TimeSeriesDataCache:
-    """缓存时间序列数据，避免重复读取文件"""
-    def __init__(self, src_dir_path: str):
-        self.src_dir_path = src_dir_path
-        self._cache = None
-        self._file_date_map = None
-        self._sorted_dates = None
-        self._date_objects = None
-        self._date_numeric = None
-        self._profile = None
-        self._height = None
-        self._width = None
-
-    def _load_data(self):
-        """延迟加载时间序列数据"""
-        if self._cache is not None:
-            return
-
-        # 获取所有源文件并按日期排序
-        src_files = glob.glob(os.path.join(self.src_dir_path, f"*{TIFF_SUFFIX}"))
-        if not src_files:
-            raise ValueError(f"No TIFF files found in {self.src_dir_path}")
-
-        # 提取日期并排序
-        self._file_date_map = {}
-        for file_path in src_files:
-            filename = os.path.basename(file_path)
-            date_str = filename.replace(TIFF_SUFFIX, '')
-            if len(date_str) == 8:  # YYYYMMDD格式
-                self._file_date_map[date_str] = file_path
-
-        self._sorted_dates = sorted(self._file_date_map.keys())
-        if not self._sorted_dates:
-            raise ValueError("No valid date files found")
-
-        # 读取第一个文件获取空间信息
-        with rasterio.open(self._file_date_map[self._sorted_dates[0]]) as src:
-            self._profile = src.profile.copy()
-            self._height, self._width = src.height, src.width
-
-        # 将日期字符串转换为datetime对象用于插值
-        self._date_objects = [datetime.strptime(d, '%Y%m%d') for d in self._sorted_dates]
-        self._date_numeric = np.array([(d - self._date_objects[0]).days for d in self._date_objects])
-
-        # 读取所有数据到内存（按日期顺序）
-        print(f"Loading {len(self._sorted_dates)} TIFF files for time series interpolation...")
-        self._cache = np.full((len(self._sorted_dates), self._height, self._width), np.nan, dtype=np.float32)
-
-        for i, date_str in enumerate(self._sorted_dates):
-            file_path = self._file_date_map[date_str]
-            with rasterio.open(file_path) as src:
-                data = src.read(1)
-                self._cache[i, :, :] = data
-
-    def get_data_stack(self):
-        """获取数据栈"""
-        self._load_data()
-        return self._cache
-
-    def get_metadata(self):
-        """获取元数据"""
-        self._load_data()
-        return {
-            'profile': self._profile,
-            'height': self._height,
-            'width': self._width,
-            'sorted_dates': self._sorted_dates,
-            'date_objects': self._date_objects,
-            'date_numeric': self._date_numeric
-        }
-
-
+# TODO interpolate_single_date_tiff
 def interpolate_single_date_tiff(src_dir_path: str,
-                                target_date_str: str,
-                                dst_file_path: str,
-                                method: str = 'linear',
-                                max_gap_days: int = 8):
+                                 target_date_str: str,
+                                 dst_file_path: str,
+                                 method: str = 'linear',
+                                 max_gap_days: int = 8):
     """
     对单个目标日期进行时间序列插值
 
@@ -372,7 +281,8 @@ def interpolate_single_date_tiff(src_dir_path: str,
         current_date += timedelta(days=1)
 
     if not file_date_map:
-        raise ValueError(f"No data_processor files found in range [{date_start.strftime('%Y%m%d')}, {date_end.strftime('%Y%m%d')}] for target date {target_date_str}")
+        raise ValueError(
+            f"No data_processor files found in range [{date_start.strftime('%Y%m%d')}, {date_end.strftime('%Y%m%d')}] for target date {target_date_str}")
 
     # 检查目标日期本身是否有文件
     target_file_path = os.path.join(src_dir_path, f"{target_date_str}{TIFF_SUFFIX}")
@@ -497,33 +407,32 @@ def interpolate_single_date_tiff(src_dir_path: str,
         dst.write(output_data, 1)
 
 
-def interpolate_time_series_tiff(src_dir_path: str,
-                                 dst_dir_path: str,
-                                 target_dates: List[str],
-                                 method: str = 'linear',
-                                 max_gap_days: int = 32):
-    """
-    对多个目标日期进行时间序列插值（兼容旧接口）
-
-    注意：此函数内部使用单日期插值函数，每次单独检索文件
-    """
-    os.makedirs(dst_dir_path, exist_ok=True)
-
-    # 对每个目标日期进行插值
-    print(f"Interpolating {len(target_dates)} target dates...")
-    for target_date_str in target_dates:
-        try:
-            dst_file_path = os.path.join(dst_dir_path, f"{target_date_str}{TIFF_SUFFIX}")
-            interpolate_single_date_tiff(
-                src_dir_path=src_dir_path,
-                target_date_str=target_date_str,
-                dst_file_path=dst_file_path,
-                method=method,
-                max_gap_days=max_gap_days
-            )
-            print(f"  Interpolated and saved: {target_date_str}")
-        except ValueError as e:
-            print(f"  Warning: {e}, skipping {target_date_str}")
-            continue
-
-    print("Time series interpolation completed!")
+def show_tiff(file_path: str, dst_epsg_code: int = 4326):
+    with rasterio.open(file_path) as dataset:
+        # 读取数据（第1波段）
+        data = dataset.read(1)
+        # 获取仿射变换（地理坐标到像素坐标转换）
+        transform = dataset.transform
+        # 获取坐标参考系统（CRS）
+        crs = dataset.crs
+        # 获取边界（范围）
+        bounds = dataset.bounds
+        # 获取像素大小
+        res = dataset.res
+    if crs is None:
+        crs = CRS.from_epsg(dst_epsg_code)
+    # 转换为 EPSG:4326
+    if dst_epsg_code != crs.to_epsg():
+        bounds = transform_bounds(crs, CRS.from_epsg(dst_epsg_code), *bounds)
+    data = np.ma.masked_invalid(data)
+    d = data[~np.isnan(data)]
+    print("Transform: ", transform)
+    print("Bounds: ", bounds)
+    print("Resolution (pixel size): ", res)
+    print("Data shape: ", data.shape)
+    # 显示高程图像
+    plt.imshow(data, cmap='terrain')
+    plt.colorbar()
+    plt.xlabel("Column")
+    plt.ylabel("Row")
+    plt.show()

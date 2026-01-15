@@ -88,15 +88,15 @@ class BatchConvert2TiffJob(BatchJob):
 
 class ValidDateFilter(BaseFilter):
     """
-    Valid file path filter for MODIS data_processor processing by date.
+    Valid file path filter for MODIS data_preprocessor processing by date.
 
     Filtering logic:
-    - NDVI data_processor: No filtering applied, all data_processor are preserved.
-      Reason: NDVI has the maximum temporal resolution, and all other data_processor
-      need to be aligned to NDVI's time series. Therefore, all NDVI data_processor
+    - NDVI data_preprocessor: No filtering applied, all data_preprocessor are preserved.
+      Reason: NDVI has the maximum temporal resolution, and all other data_preprocessor
+      need to be aligned to NDVI's time series. Therefore, all NDVI data_preprocessor
       must be retained to ensure temporal alignment.
-    - Other data_processor types (e.g., LST, Albedo): Filtered based on valid date list,
-      only data_processor with valid dates are preserved.
+    - Other data_preprocessor types (e.g., LST, Albedo): Filtered based on valid date list,
+      only data_preprocessor with valid dates are preserved.
     """
 
     def __init__(self,

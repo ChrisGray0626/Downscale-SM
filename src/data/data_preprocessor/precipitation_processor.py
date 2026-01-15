@@ -89,7 +89,7 @@ class Reader(BaseTask):
             lats = ds['lat'].values
             date = ds['time'].values[0]
 
-        # Convert data_processor
+        # Convert data_preprocessor
         data = data.transpose()
         data = data[::-1, :]
         data = np.asarray(data, dtype=np.float32)

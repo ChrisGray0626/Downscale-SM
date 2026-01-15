@@ -10,7 +10,7 @@ import re
 from datetime import timedelta, datetime
 
 from constants import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH
-from util import write_txt, read_txt
+from utils.util import write_txt, read_txt
 
 
 def extract_date_from_modis_filename(filename: str):

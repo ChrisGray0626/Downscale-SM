@@ -3,14 +3,14 @@ import rasterio
 from pyproj import CRS, Transformer
 from rasterio.transform import from_origin
 
-from constants import RANGE, RESULT_PATH
+from constants import RANGE, RESULT_DIR_PATH
 
 # TODO
 # 网格分辨率（单位：米）
 resolution = 1000
 
 output_file = "Standard_Grid_36km.tif"
-output_path = RESULT_PATH + output_file
+output_path = RESULT_DIR_PATH + output_file
 
 # 设置经纬度空间范围
 lon_min, lat_min, lon_max, lat_max = RANGE
