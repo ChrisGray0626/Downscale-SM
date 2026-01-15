@@ -16,7 +16,7 @@ RANGE = [-120, 35, -104, 49]
 PROJ_PATH = os.getenv("PROJ_PATH") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKPOINT_DIR_PATH = os.path.join(PROJ_PATH, "CHECKPOINTS")
 RESULT_DIR_PATH = os.path.join(PROJ_PATH, "RESULTS")
-DATA_DIR_PATH = os.getenv("DATA_DIR_PATH", "/Volumes/Elements SE/Data/Downscale-DM")
+DATA_DIR_PATH = os.getenv("DATA_DIR_PATH", "/Volumes/Elements SE/Data/SMDownscaling")
 RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2016-2020")
 PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, "Processed")
 CONVERTED_DIR_NAME = "Converted"
@@ -25,7 +25,7 @@ DECOMPRESSED_DIR_NAME = "Decompressed"
 INFERENCE_DIR_PATH = os.path.join(DATA_DIR_PATH, "Inference")
 CORRECTION_DIR_PATH = os.path.join(DATA_DIR_PATH, "Correction")
 
-VALID_DATE_FILE_PATH = os.path.join(DATA_DIR_PATH, "ValidDate.txt")
+VALID_DATE_FILE_PATH = os.path.join(DATA_DIR_PATH, "VALID_DATES.txt")
 
 # 数据名称
 DATE_NAME = "Date"
@@ -44,9 +44,10 @@ PRECIPITATION_NAME = "Precipitation"
 DEM_NAME = "DEM"
 IN_SITU_NAME = "InSitu"
 
-# Reference Grid
-REF_GRID_36KM_PATH = os.path.join(DATA_DIR_PATH, "Standard_Grid_36km.tif")
-REF_GRID_1KM_PATH = os.path.join(DATA_DIR_PATH, "Standard_Grid_1km.tif")
-
 RESOLUTION_36KM = "36km"
 RESOLUTION_1KM = "1km"
+
+# Reference Grid
+REF_GRID_36KM_PATH = os.path.join(DATA_DIR_PATH, f"REF_GRID_{RESOLUTION_36KM}{TIFF_SUFFIX}")
+REF_GRID_1KM_PATH = os.path.join(DATA_DIR_PATH, f"REF_GRID_{RESOLUTION_1KM}{TIFF_SUFFIX}")
+
