@@ -6,12 +6,12 @@
   @Date 2025/5/19
 """
 
-from Constant import *
-from util.workflow.common.Merge import BatchMergeTiffJob
-from util.workflow.common.Resample import BatchMultiResampleTiffJob, ResolutionConfig
-from util.workflow.core.Base import Job, Context
-from util.workflow.core.ContextKey import *
-from util.workflow.modis.DataConvert import BatchConvert2TiffJob
+from constants import *
+from utils.workflow.common.merger import BatchMergeTiffJob
+from utils.workflow.common.Resampler import BatchMultiResampleTiffJob, ResolutionConfig
+from utils.workflow.core.base import Job, Context
+from utils.workflow.core.context_key import *
+from utils.workflow.modis.data_converter import BatchConvert2TiffJob
 
 # Gap Value
 GAP_VALUE = 32766

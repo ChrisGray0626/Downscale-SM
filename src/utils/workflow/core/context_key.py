@@ -17,6 +17,7 @@ DST_DIR_PATH_KEY = "dst_dir_path"
 
 RAW_DIR_PATH_KEY = "raw_dir_path"
 CONVERTED_DIR_PATH_KEY = "converted_dir_path"
+INTERPOLATED_DIR_PATH_KEY = "interpolated_dir_path"
 MERGED_DIR_PATH_KEY = "merged_dir_path"
 RESAMPLED_DIR_PATH_KEY = "resampled_dir_path"
 DECOMPRESSED_DIR_PATH_KEY = "decompressed_dir_path"
@@ -26,7 +27,7 @@ REF_GRID_PATH_KEY = "ref_grid_path"
 RESOLUTION_CONFIGS_KEY = "resolution_configs"
 
 # Data
-DATA_KEY = "data"
+DATA_KEY = "data_processor"
 DATA_NAME_KEY = "data_name"
 GAP_VALUE_KEY = "gap_value"
 SCALE_FACTOR_KEY = "scale_factor"

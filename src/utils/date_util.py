@@ -9,8 +9,8 @@ import os
 import re
 from datetime import timedelta, datetime
 
-from Constant import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH
-from util.util import write_txt, read_txt
+from constants import DATA_DIR_PATH, NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH
+from util import write_txt, read_txt
 
 
 def extract_date_from_modis_filename(filename: str):
@@ -32,8 +32,6 @@ def convert_year_day2date(year_day):
 
     # 转换为 YYYYMMDD 格式
     return date.strftime('%Y%m%d')
-
-
 
 
 def handle_valid_date():

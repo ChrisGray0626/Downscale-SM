@@ -42,7 +42,6 @@ PRED_DATA_NAME = "PredData"
 
 CONVERTED_DIR_NAME = "Converted"
 MERGED_DIR_NAME = "Merged"
-RESAMPLED_DIR_NAME = "Resampled"
 DECOMPRESSED_DIR_NAME = "Decompressed"
 
 # 输入数据路径
@@ -69,11 +68,3 @@ REF_GRID_36KM_PATH = os.path.join(RESULT_PATH, "Standard_Grid_36km.tif")
 # Reference Grid Resolution
 RESOLUTION_36KM = "36km"
 RESOLUTION_1KM = "1km"
-
-# 自变量列名
-X_COLUMN = [
-    NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME
-]
-# 因变量列名
-Y_COLUMN = [SM_NAME]
-SPATIAL_COLUMN = [PROJ_X_NAME, PROJ_Y_NAME]

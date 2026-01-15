@@ -11,13 +11,13 @@ from typing import List
 import numpy as np
 import xarray as xr
 
-from Constant import *
-from util.DateUtil import is_valid_date
-from util.util import build_transform_from_lonlat
-from util.workflow.common.Write import TiffWriter
-from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob, Job
-from util.workflow.common.Resample import ResolutionConfig, BatchMultiResampleTiffJob
-from util.workflow.core.ContextKey import *
+from constants import *
+from utils.date_util import is_valid_date
+from utils.util import build_transform_from_lonlat
+from utils.workflow.common.Writer import TiffWriter
+from utils.workflow.core.base import BaseTask, Context, BaseFilter, BatchJob, Job
+from utils.workflow.common.Resampler import ResolutionConfig, BatchMultiResampleTiffJob
+from utils.workflow.core.context_key import *
 
 
 DATA_NAME = PRECIPITATION_NAME
@@ -89,7 +89,7 @@ class Reader(BaseTask):
             lats = ds['lat'].values
             date = ds['time'].values[0]
 
-        # Convert data
+        # Convert data_processor
         data = data.transpose()
         data = data[::-1, :]
         data = np.asarray(data, dtype=np.float32)

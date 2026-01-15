@@ -8,10 +8,10 @@
 import os
 from typing import List
 
-from Constant import ZIP_SUFFIX
-from util.util import unzip_file
-from util.workflow.core.ContextKey import SRC_FILE_PATH_KEY, SRC_DIR_PATH_KEY, DST_DIR_PATH_KEY
-from util.workflow.core.Base import BaseTask, Context, BatchJob
+from constants import ZIP_SUFFIX
+from utils.util import unzip_file
+from utils.workflow.core.base import BaseTask, Context, BatchJob
+from utils.workflow.core.context_key import SRC_FILE_PATH_KEY, DST_DIR_PATH_KEY
 
 __all__ = [
     'BatchDecompressJob',

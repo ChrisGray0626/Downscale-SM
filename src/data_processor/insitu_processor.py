@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Handle International Soil Moisture Network (ISMN) data
+  @Description Handle International Soil Moisture Network (ISMN) data_processor
   @Author Chris
   @Date 2025/6/24
 """
@@ -11,18 +11,19 @@ import pandas as pd
 from ismn.interface import ISMN_Interface
 from tqdm import tqdm
 
-from Constant import *
-from util.TiffUtil import interpolate_tiff
-from util.util import is_tgt_date
+from constants import *
+from utils.tiff_util import interpolate_tiff
+from utils.date_util import is_valid_date
 
-INPUT_DIR_PATH = os.path.join(RAW_DIR_PATH, IN_SITU_NAME)
-INPUT_FILENAME = "Data_separate_files_header_20160101_20161231_12262_E0kA_20250714.zip"
-INPUT_PATH = os.path.join(INPUT_DIR_PATH, INPUT_FILENAME)
-OUTPUT_DIR_PATH = os.path.join(RESULT_PATH, IN_SITU_NAME)
-CSV_PATH = os.path.join(OUTPUT_DIR_PATH, f"InSituAggData{CSV_SUFFIX}")
-TIFF_DIR_PATH = os.path.join(OUTPUT_DIR_PATH, "tiff")
+SRC_DIR_PATH = os.path.join(RAW_DIR_PATH, IN_SITU_NAME)
+INPUT_FILENAME = "Data_separate_files_header_20160101_20201231_12262_I34f_20251219.zip"
+INPUT_PATH = os.path.join(SRC_DIR_PATH, INPUT_FILENAME)
+DST_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, IN_SITU_NAME)
+CSV_PATH = os.path.join(DST_DIR_PATH, f"InSituAggData{CSV_SUFFIX}")
+TIFF_DIR_PATH = os.path.join(DST_DIR_PATH, "tiff")
 
 
+# TODO Refactor to workflow
 def extract():
     ismn_data = ISMN_Interface(INPUT_PATH, parallel=True)
 
@@ -44,6 +45,9 @@ def extract():
         for row in data.itertuples():
             # 转换日期格式为 YYYYMMDD
             date = pd.to_datetime(row.Index).strftime('%Y%m%d')
+            sm = row.soil_moisture
+            if sm < 0.02:
+                sm = 0.02
             records.append({
                 'Network': network_name,
                 'Station': station_name,
@@ -51,7 +55,7 @@ def extract():
                 DATE_NAME: date,
                 LONGITUDE_NAME: lon,
                 LATITUDE_NAME: lat,
-                SM_NAME: row.soil_moisture
+                SM_NAME: sm
             })
     df = pd.DataFrame(records)
 
@@ -70,21 +74,21 @@ def convert2tiff():
     df_group_by_date = df.groupby(DATE_NAME)
     for date, df in tqdm(df_group_by_date):
         date = str(date)
-        if not is_tgt_date(date):
+        if not is_valid_date(date):
             continue
-        dst_path = os.path.join(TIFF_DIR_PATH, f"{date}{TIFF_SUFFIX}")
+        dst_path = os.path.join(PROCESSED_DIR_PATH, IN_SITU_NAME, RESOLUTION_36KM, f"{date}{TIFF_SUFFIX}")
         interpolate_tiff(df[SM_NAME].values,
                          df[LONGITUDE_NAME].values,
                          df[LATITUDE_NAME].values,
-                         REF_GRID_1KM_PATH,
+                         REF_GRID_36KM_PATH,
                          dst_path
                          )
 
 
 def main():
-    os.makedirs(OUTPUT_DIR_PATH, exist_ok=True)
+    os.makedirs(DST_DIR_PATH, exist_ok=True)
     df = extract()
-    output_path = os.path.join(OUTPUT_DIR_PATH, "InSituSensorData.csv")
+    output_path = os.path.join(DST_DIR_PATH, "InSituSensorData.csv")
     df.to_csv(output_path, index=False)
     df = agg(df)
     output_path = os.path.join(CSV_PATH)

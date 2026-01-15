@@ -14,13 +14,12 @@ from affine import Affine
 from osgeo import gdal
 from pyproj import CRS
 
-from Constant import NDVI_NAME, HDF4_SUFFIX, TIFF_SUFFIX
-from util.DateUtil import is_valid_date, extract_date_from_modis_filename, handle_valid_date
-from util.TiffUtil import write_tiff_from_transform
-from util.workflow.common.Write import TiffWriter
-from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, \
+from constants import NDVI_NAME, HDF4_SUFFIX, TIFF_SUFFIX
+from utils.date_util import is_valid_date, extract_date_from_modis_filename, handle_valid_date
+from utils.workflow.common.Writer import TiffWriter
+from utils.workflow.core.base import BaseTask, Context, BaseFilter, BatchJob
+from utils.workflow.core.context_key import DATA_KEY, TRANSFORM_KEY, \
     GAP_VALUE_KEY, SCALE_FACTOR_KEY, DATA_NAME_KEY, DST_FILE_PATH_KEY, SRC_FILE_PATH_KEY, CRS_KEY, EPSG_CODE_KEY
-from util.workflow.core.Base import BaseTask, Context, BaseFilter, BatchJob
 
 __all__ = [
     "BatchConvert2TiffJob",
@@ -89,15 +88,15 @@ class BatchConvert2TiffJob(BatchJob):
 
 class ValidDateFilter(BaseFilter):
     """
-    Valid file path filter for MODIS data processing by date.
+    Valid file path filter for MODIS data_processor processing by date.
 
     Filtering logic:
-    - NDVI data: No filtering applied, all data are preserved.
-      Reason: NDVI has the maximum temporal resolution, and all other data
-      need to be aligned to NDVI's time series. Therefore, all NDVI data
+    - NDVI data_processor: No filtering applied, all data_processor are preserved.
+      Reason: NDVI has the maximum temporal resolution, and all other data_processor
+      need to be aligned to NDVI's time series. Therefore, all NDVI data_processor
       must be retained to ensure temporal alignment.
-    - Other data types (e.g., LST, Albedo): Filtered based on valid date list,
-      only data with valid dates are preserved.
+    - Other data_processor types (e.g., LST, Albedo): Filtered based on valid date list,
+      only data_processor with valid dates are preserved.
     """
 
     def __init__(self,

@@ -6,13 +6,13 @@
   @Date 2025/5/6
 """
 
-from Constant import *
-from util.workflow.common.Decompress import BatchDecompressJob
-from util.workflow.common.Merge import TiffMerger
-from util.workflow.common.Resample import MultiResampleTiffJob, ResolutionConfig
-from util.workflow.core.Base import Job, Context
+from constants import *
+from utils.workflow.common.decompressor import BatchDecompressJob
+from utils.workflow.common.merger import TiffMerger
+from utils.workflow.common.Resampler import MultiResampleTiffJob, ResolutionConfig
+from utils.workflow.core.base import Job, Context
 
-from util.workflow.core.ContextKey import *
+from utils.workflow.core.context_key import *
 
 DATA_NAME = DEM_NAME
 RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)

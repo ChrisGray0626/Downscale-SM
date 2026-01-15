@@ -9,9 +9,9 @@ import os
 
 import numpy as np
 
-from util.TiffUtil import write_tiff_from_transform
-from util.workflow.core.Base import BaseTask
-from util.workflow.core.ContextKey import DATA_KEY, TRANSFORM_KEY, EPSG_CODE_KEY, CRS_KEY, DST_FILE_PATH_KEY
+from utils.tiff_util import write_tiff
+from utils.workflow.core.base import BaseTask
+from utils.workflow.core.context_key import DATA_KEY, TRANSFORM_KEY, EPSG_CODE_KEY, CRS_KEY, DST_FILE_PATH_KEY
 
 __all__ = [
     "TiffWriter",
@@ -42,7 +42,7 @@ class TiffWriter(BaseTask):
 
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
 
-        write_tiff_from_transform(
+        write_tiff(
             data=data,
             dst_file_path=dst_file_path,
             transform=transform,

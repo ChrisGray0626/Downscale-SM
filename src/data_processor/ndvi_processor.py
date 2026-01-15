@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Handle LST Data
+  @Description Handle NDVI Data
   @Author Chris
   @Date 2025/5/5
 """
 
-
-from Constant import *
-from util.workflow.common.Merge import BatchMergeTiffJob
-from util.workflow.common.Resample import BatchMultiResampleTiffJob, ResolutionConfig
-from util.workflow.core.Base import Job, Context
-from util.workflow.core.ContextKey import *
-from util.workflow.modis.DataConvert import BatchConvert2TiffJob
+from constants import *
+from utils.workflow.common.merger import BatchMergeTiffJob
+from utils.workflow.common.Resampler import BatchMultiResampleTiffJob, ResolutionConfig
+from utils.workflow.core.base import Job, Context
+from utils.workflow.core.context_key import *
+from utils.workflow.modis.data_converter import BatchConvert2TiffJob, ValidDateHandler
 
 # Gap Value
-GAP_VALUE = 0
-SCALE_FACTOR = 0.02
+GAP_VALUE = -3000
+SCALE_FACTOR = 0.0001
 
-DATA_NAME = LST_NAME
+DATA_NAME = NDVI_NAME
 RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)
 CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, CONVERTED_DIR_NAME)
 MERGED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, MERGED_DIR_NAME)
@@ -42,6 +41,7 @@ def main():
             src_dir_path_key=MERGED_DIR_PATH_KEY,
             dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
         ),
+        ValidDateHandler(),
     ])
 
     # Convert to TIFF Config

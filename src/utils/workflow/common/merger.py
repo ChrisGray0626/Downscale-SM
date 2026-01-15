@@ -10,11 +10,11 @@ import os
 from collections import defaultdict
 from typing import List
 
-from Constant import TIFF_SUFFIX
-from util.DateUtil import extract_date_from_modis_filename
-from util.TiffUtil import merge_tiff
-from util.workflow.core.ContextKey import SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY
-from util.workflow.core.Base import BaseTask, Context, BatchJob
+from constants import TIFF_SUFFIX
+from utils.date_util import extract_date_from_modis_filename
+from utils.tiff_util import merge_tiff
+from utils.workflow.core.context_key import SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY
+from utils.workflow.core.base import BaseTask, Context, BatchJob
 
 __all__ = [
     'BatchMergeTiffJob',
