@@ -13,7 +13,7 @@ from diffusers import DDPMScheduler
 from torch.utils.data import Dataset, DataLoader
 
 from constants import *
-from data.dataset import TrainDataset, InsituStatsStore
+from dataset.dataset import TrainDataset, InsituStatsStore
 from module import NoisePredictor, EarlyStopping, build_device
 
 # Dataset setting
