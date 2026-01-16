@@ -11,7 +11,7 @@ from pyproj import CRS, Transformer
 from rasterio.transform import from_origin
 
 from constants import RANGE, RESOLUTION_1KM, RESOLUTION_36KM, REF_GRID_1KM_PATH, REF_GRID_36KM_PATH
-from utils.tiff_util import write_tiff
+from utils.raster_util import write_tiff
 
 
 def build_ref_grid(resolution: str):

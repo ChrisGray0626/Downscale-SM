@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import List
 
 from constants import TIFF_SUFFIX
-from utils.tiff_util import resample_tiff
+from utils.raster_util import resample_tiff
 from utils.workflow.core.context_key import SRC_FILE_PATH_KEY, DST_FILE_PATH_KEY, REF_GRID_PATH_KEY, \
     RESOLUTION_CONFIGS_KEY
 from utils.workflow.core.base import Context, BaseTask, BatchJob

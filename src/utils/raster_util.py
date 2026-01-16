@@ -18,9 +18,10 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from rasterio.transform import rowcol
 from rasterio.warp import transform_bounds, reproject, Resampling
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import griddata
 
 from constants import *
+from utils.data_store import BaseDataStore
 
 gdal.UseExceptions()
 
@@ -216,7 +217,7 @@ def write_tiff(data,
     if data.ndim != 2 and data.ndim != 3:
         raise ValueError(f"Expected 2-D or 3-D data_processor, got shape {data.shape}")
 
-    # Ensure data_preprocessor is 3-D for consistent processing
+    # Ensure Data is 3-D for consistent processing
     if data.ndim == 2:
         data = data[np.newaxis, :, :]
     band, height, width = data.shape
@@ -235,176 +236,6 @@ def write_tiff(data,
     }
     with rasterio.open(dst_file_path, 'w', **profile) as dst:
         dst.write(data)
-
-
-# TODO interpolate_single_date_tiff
-def interpolate_single_date_tiff(src_dir_path: str,
-                                 target_date_str: str,
-                                 dst_file_path: str,
-                                 method: str = 'linear',
-                                 max_gap_days: int = 8):
-    """
-    对单个目标日期进行时间序列插值
-
-    每次调用时动态查找目标日期前后 max_gap_days 范围内的文件，不使用缓存
-
-    Parameters
-    ----------
-    src_dir_path : str
-        源TIFF文件目录（包含所有1天分辨率的数据）
-    target_date_str : str
-        目标日期（YYYYMMDD格式）
-    dst_file_path : str
-        输出文件路径
-    method : str, default 'linear'
-        插值方法：'linear', 'cubic', 'nearest', 'time'
-    max_gap_days : int, default 8
-        最大允许的插值间隔（天数），前后各 max_gap_days 天
-    """
-    # 解析目标日期
-    target_date = datetime.strptime(target_date_str, '%Y%m%d')
-
-    # 计算需要查找的日期范围（目标日期前后各 max_gap_days 天）
-    date_start = target_date - timedelta(days=max_gap_days)
-    date_end = target_date + timedelta(days=max_gap_days)
-
-    # 查找范围内的所有文件
-    file_date_map = {}
-    date_range = []
-    current_date = date_start
-    while current_date <= date_end:
-        date_str = current_date.strftime('%Y%m%d')
-        file_path = os.path.join(src_dir_path, f"{date_str}{TIFF_SUFFIX}")
-        if os.path.exists(file_path):
-            file_date_map[date_str] = file_path
-            date_range.append(date_str)
-        current_date += timedelta(days=1)
-
-    if not file_date_map:
-        raise ValueError(
-            f"No data_processor files found in range [{date_start.strftime('%Y%m%d')}, {date_end.strftime('%Y%m%d')}] for target date {target_date_str}")
-
-    # 检查目标日期本身是否有文件
-    target_file_path = os.path.join(src_dir_path, f"{target_date_str}{TIFF_SUFFIX}")
-    has_target_file = os.path.exists(target_file_path)
-
-    # 读取第一个文件获取空间信息
-    first_file = list(file_date_map.values())[0]
-    with rasterio.open(first_file) as src:
-        profile = src.profile.copy()
-        height, width = src.height, src.width
-
-    # 将日期字符串转换为datetime对象用于插值
-    sorted_dates = sorted(file_date_map.keys())
-    date_objects = [datetime.strptime(d, '%Y%m%d') for d in sorted_dates]
-    date_numeric = np.array([(d - date_objects[0]).days for d in date_objects])
-    target_numeric = (target_date - date_objects[0]).days
-
-    # 读取范围内的所有数据到内存
-    data_stack = np.full((len(sorted_dates), height, width), np.nan, dtype=np.float32)
-    for i, date_str in enumerate(sorted_dates):
-        file_path = file_date_map[date_str]
-        with rasterio.open(file_path) as src:
-            data = src.read(1)
-            data_stack[i, :, :] = data
-
-    # 初始化输出数组
-    output_data = np.full((height, width), np.nan, dtype=np.float32)
-
-    # 对每个像素进行时间序列插值
-    for row in range(height):
-        for col in range(width):
-            pixel_series = data_stack[:, row, col]
-
-            # 检查是否有有效数据
-            valid_mask = ~np.isnan(pixel_series)
-            if not np.any(valid_mask):
-                continue  # 如果完全没有有效数据，保持NaN
-
-            valid_indices = np.where(valid_mask)[0]
-            valid_values = pixel_series[valid_indices]
-            valid_dates = date_numeric[valid_indices]
-
-            # 检查目标日期附近是否有数据
-            if target_numeric in valid_dates:
-                # 如果目标日期本身有数据，直接使用
-                output_data[row, col] = pixel_series[np.where(date_numeric == target_numeric)[0][0]]
-                continue
-
-            # 检查最大间隔
-            if len(valid_dates) < 2:
-                continue  # 至少需要2个点才能插值
-
-            # 找到目标日期前后的有效数据点
-            before_idx = np.where(valid_dates < target_numeric)[0]
-            after_idx = np.where(valid_dates > target_numeric)[0]
-
-            if len(before_idx) == 0 or len(after_idx) == 0:
-                continue  # 目标日期在数据范围外
-
-            before_date = valid_dates[before_idx[-1]]
-            after_date = valid_dates[after_idx[0]]
-            gap_before = target_numeric - before_date
-            gap_after = after_date - target_numeric
-
-            # 检查是否超过最大间隔
-            if gap_before > max_gap_days or gap_after > max_gap_days:
-                continue
-
-            # 执行插值
-            if method == 'linear':
-                # 线性插值
-                interp_func = interp1d(valid_dates, valid_values,
-                                       kind='linear',
-                                       bounds_error=False,
-                                       fill_value=np.nan)
-                interpolated = interp_func(target_numeric)
-                if not np.isnan(interpolated):
-                    output_data[row, col] = interpolated
-            elif method == 'cubic':
-                # 三次样条插值（需要至少4个点）
-                if len(valid_dates) >= 4:
-                    interp_func = interp1d(valid_dates, valid_values,
-                                           kind='cubic',
-                                           bounds_error=False,
-                                           fill_value=np.nan)
-                    interpolated = interp_func(target_numeric)
-                    if not np.isnan(interpolated):
-                        output_data[row, col] = interpolated
-                else:
-                    # 回退到线性插值
-                    interp_func = interp1d(valid_dates, valid_values,
-                                           kind='linear',
-                                           bounds_error=False,
-                                           fill_value=np.nan)
-                    interpolated = interp_func(target_numeric)
-                    if not np.isnan(interpolated):
-                        output_data[row, col] = interpolated
-            elif method == 'time':
-                # 时间加权插值（距离越近权重越大）
-                total_weight = 0
-                weighted_sum = 0
-                for v_date, v_value in zip(valid_dates, valid_values):
-                    distance = abs(v_date - target_numeric)
-                    if distance == 0:
-                        weighted_sum = v_value
-                        total_weight = 1
-                        break
-                    weight = 1.0 / (distance + 1)  # 加1避免除零
-                    weighted_sum += weight * v_value
-                    total_weight += weight
-                if total_weight > 0:
-                    output_data[row, col] = weighted_sum / total_weight
-            elif method == 'nearest':
-                # 最近邻插值
-                nearest_idx = np.argmin(np.abs(valid_dates - target_numeric))
-                output_data[row, col] = valid_values[nearest_idx]
-
-    # 写入输出文件
-    os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
-    profile.update(dtype='float32', count=1, nodata=np.nan)
-    with rasterio.open(dst_file_path, 'w', **profile) as dst:
-        dst.write(output_data, 1)
 
 
 def show_tiff(file_path: str, dst_epsg_code: int = 4326):

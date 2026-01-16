@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 
-from utils.tiff_util import write_tiff
+from utils.raster_util import write_tiff
 from utils.workflow.core.base import BaseTask
 from utils.workflow.core.context_key import DATA_KEY, TRANSFORM_KEY, EPSG_CODE_KEY, CRS_KEY, DST_FILE_PATH_KEY
 

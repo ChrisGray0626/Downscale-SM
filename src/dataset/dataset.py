@@ -13,8 +13,23 @@ import torch
 from torch.utils.data import Dataset
 
 from constants import *
-from utils.tiff_util import read_tiff, read_tiff_data, read_tiff_meta
+from utils.data_store import BaseDataStore
+from utils.raster_util import read_tiff, read_tiff_data, read_tiff_meta
 from utils.date_util import get_valid_dates
+
+
+__all__ = [
+    'TrainDataset',
+    'InferenceDataset',
+    'CorrectionDataset',
+    'ResultEvaluationDataset',
+    'DataCoverageDataset',
+    'DataStore',
+    'GridInfoStore',
+    'InsituStatsStore',
+    'InferenceResultStore',
+    'CorrectionResultStore',
+]
 
 
 class TrainDataset(Dataset):
@@ -363,29 +378,6 @@ class DataCoverageDataset(Dataset):
         insitu_valid = np.concatenate(all_insitu_valid)
 
         return rows, cols, feature_values, train_valid, insitu_valid, all_dates
-
-
-T = TypeVar("T")
-
-
-class BaseDataStore(Generic[T]):
-
-    def __init__(self):
-        self._cache: Dict[Hashable, T] = {}
-
-    def _get(self, key: Hashable, loader: Callable[[], T], cache_used: bool = True) -> T:
-        if cache_used and key in self._cache:
-            return self._cache[key]
-
-        data = loader()
-
-        if cache_used:
-            self._cache[key] = data
-
-        return data
-
-    def clear_cache(self) -> None:
-        self._cache.clear()
 
 
 class InsituStatsStore(BaseDataStore[np.ndarray]):

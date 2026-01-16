@@ -27,7 +27,7 @@ REF_GRID_PATH_KEY = "ref_grid_path"
 RESOLUTION_CONFIGS_KEY = "resolution_configs"
 
 # Data
-DATA_KEY = "data_preprocessor"
+DATA_KEY = "data"
 DATA_NAME_KEY = "data_name"
 GAP_VALUE_KEY = "gap_value"
 SCALE_FACTOR_KEY = "scale_factor"
@@ -37,3 +37,4 @@ CRS_KEY = "crs"
 LONGITUDE_KEY = "longitude"
 LATITUDE_KEY = "latitude"
 DATE_KEY = "date"
+WINDOW_SIZE_KEY = "window_size"

@@ -8,7 +8,7 @@
 import os
 
 from constants import RESULT_DIR_PATH, RESOLUTION_36KM
-from data.dataset import ResultEvaluationDataset
+from dataset.dataset import ResultEvaluationDataset
 from evaluator import Evaluator
 
 RESOLUTION = RESOLUTION_36KM

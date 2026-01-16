@@ -20,6 +20,7 @@ DATA_DIR_PATH = os.getenv("DATA_DIR_PATH", "/Volumes/Elements SE/Data/SMDownscal
 RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2016-2020")
 PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, "Processed")
 CONVERTED_DIR_NAME = "Converted"
+INTERPOLATED_DIR_NAME = "Interpolated"
 MERGED_DIR_NAME = "Merged"
 DECOMPRESSED_DIR_NAME = "Decompressed"
 INFERENCE_DIR_PATH = os.path.join(DATA_DIR_PATH, "Inference")

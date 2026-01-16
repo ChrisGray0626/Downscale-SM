@@ -12,7 +12,7 @@ from typing import List
 
 from constants import TIFF_SUFFIX
 from utils.date_util import extract_date_from_modis_filename
-from utils.tiff_util import merge_tiff
+from utils.raster_util import merge_tiff
 from utils.workflow.core.context_key import SRC_FILE_PATHS_KEY, DST_FILE_PATH_KEY
 from utils.workflow.core.base import BaseTask, Context, BatchJob
 

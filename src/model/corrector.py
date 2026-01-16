@@ -11,9 +11,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
-from data.dataset import CorrectionDataset, GridInfoStore
+from dataset.dataset import CorrectionDataset, GridInfoStore
 from module import BiasCorrector
-from utils.tiff_util import write_tiff
+from utils.raster_util import write_tiff
 from utils.date_util import get_valid_dates
 
 BATCH_SIZE = 16384

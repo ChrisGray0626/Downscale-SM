@@ -6,6 +6,7 @@
   @Date 2025/4/25
 """
 import glob
+from datetime import datetime, timedelta
 from typing import List
 
 import h5py as h5
@@ -15,22 +16,25 @@ from pyproj import CRS
 from rasterio.transform import from_origin
 
 from constants import *
-from utils.date_util import is_valid_date, get_valid_dates
-from utils.tiff_util import interpolate_single_date_tiff
+from utils.data_store import BaseDataStore
+from utils.raster_util import write_tiff, read_tiff_meta, read_tiff_data
 from utils.workflow.common.Resampler import BatchResampleTiffJob
 from utils.workflow.common.Writer import TiffWriter
-from utils.workflow.core.base import BaseTask, Context, BaseFilter, Job, BatchJob
+from utils.workflow.core.base import BaseTask, Context, Job, BatchJob
 from utils.workflow.core.context_key import SRC_FILE_PATH_KEY, DATA_KEY, GAP_VALUE_KEY, RAW_DIR_PATH_KEY, \
     DST_DIR_PATH_KEY, DATE_KEY, CONVERTED_DIR_PATH_KEY, RESAMPLED_DIR_PATH_KEY, REF_GRID_PATH_KEY, TRANSFORM_KEY, \
-    DST_FILE_PATH_KEY, CRS_KEY, INTERPOLATED_DIR_PATH_KEY
+    DST_FILE_PATH_KEY, CRS_KEY, INTERPOLATED_DIR_PATH_KEY, WINDOW_SIZE_KEY
 
 # Gap Value
 GAP_VALUE = -9999
 
+# Time Series Interpolation Window Size
+WINDOW_SIZE = 2
+
 DATA_NAME = SM_NAME
 RAW_DIR_PATH = os.path.join(RAW_DIR_PATH, DATA_NAME)
 CONVERTED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, CONVERTED_DIR_NAME)
-INTERPOLATED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, "Interpolated")
+INTERPOLATED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, INTERPOLATED_DIR_NAME)
 RESAMPLED_DIR_PATH = os.path.join(PROCESSED_DIR_PATH, DATA_NAME, RESOLUTION_36KM)
 
 
@@ -45,14 +49,13 @@ def main():
         TimeSeriesInterpolationJob(
             src_dir_path_key=CONVERTED_DIR_PATH_KEY,
             dst_dir_path_key=INTERPOLATED_DIR_PATH_KEY,
-            method='linear',
-            max_gap_days=2
         ),
         BatchResampleTiffJob(
             src_dir_path_key=INTERPOLATED_DIR_PATH_KEY,
             dst_dir_path_key=RESAMPLED_DIR_PATH_KEY,
         )
     ])
+
     # Convert to TIFF Config
     # Read Config
     context.set_global(RAW_DIR_PATH_KEY, RAW_DIR_PATH)
@@ -64,6 +67,8 @@ def main():
     context.set_global(TRANSFORM_KEY, build_6933_transform())
     context.set_global(CRS_KEY, CRS.from_epsg(6933))
 
+    # Time Series Interpolation Config
+    context.set_global(WINDOW_SIZE_KEY, WINDOW_SIZE)
     # Resample Config
     context.set_global(RESAMPLED_DIR_PATH_KEY, RESAMPLED_DIR_PATH)
     context.set_global(REF_GRID_PATH_KEY, REF_GRID_36KM_PATH)
@@ -101,19 +106,6 @@ class BatchConvert2TiffJob(BatchJob):
             batch_contexts.append(batch_context)
 
         return batch_contexts
-
-
-class ValidDateFilter(BaseFilter):
-
-    def __init__(self, src_file_path_key: str = SRC_FILE_PATH_KEY):
-        super().__init__()
-        self.src_file_path_key = src_file_path_key
-
-    def filter(self, context: Context) -> bool:
-        src_file_path = context.get(self.src_file_path_key)
-        date = os.path.basename(src_file_path)[13:21]
-
-        return not is_valid_date(date)
 
 
 class Reader(BaseTask):
@@ -180,46 +172,39 @@ def build_6933_transform() -> Affine:
     return transform
 
 
-# TODO TimeSeriesInterpolationJob
 class TimeSeriesInterpolationJob(BatchJob):
 
     def __init__(self,
                  src_dir_path_key: str = CONVERTED_DIR_PATH_KEY,
                  dst_dir_path_key: str = INTERPOLATED_DIR_PATH_KEY,
-                 method: str = 'linear',
-                 max_gap_days: int = 4):
+                 ):
         super().__init__()
         self.src_dir_path_key = src_dir_path_key
         self.dst_dir_path_key = dst_dir_path_key
-        self.method = method
-        self.max_gap_days = max_gap_days
         self.add([
             TimeSeriesInterpolator(
                 src_dir_path_key=src_dir_path_key,
                 dst_file_path_key=DST_FILE_PATH_KEY,
-                date_key=DATE_KEY,
-                method_key='interpolation_method',
-                max_gap_days_key='max_gap_days'
             )
         ])
 
     def build_batch_context(self, context: Context) -> List[Context]:
         src_dir_path = context.get(self.src_dir_path_key)
         dst_dir_path = context.get(self.dst_dir_path_key)
+        window_size = context.get(WINDOW_SIZE_KEY)
 
-        target_dates = get_valid_dates()
+        dates = [os.path.splitext(f)[0] for f in os.listdir(src_dir_path) if f.endswith(TIFF_SUFFIX)]
 
         os.makedirs(dst_dir_path, exist_ok=True)
 
         batch_contexts = []
 
-        for target_date_str in target_dates:
+        for date in dates:
             batch_context = context.global_copy()
             batch_context.set(self.src_dir_path_key, src_dir_path)
-            batch_context.set(DATE_KEY, target_date_str)
-            batch_context.set('interpolation_method', self.method)
-            batch_context.set('max_gap_days', self.max_gap_days)
-            batch_context.set(DST_FILE_PATH_KEY, os.path.join(dst_dir_path, f"{target_date_str}{TIFF_SUFFIX}"))
+            batch_context.set(DATE_KEY, date)
+            batch_context.set(WINDOW_SIZE_KEY, window_size)
+            batch_context.set(DST_FILE_PATH_KEY, os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}"))
             batch_contexts.append(batch_context)
 
         return batch_contexts
@@ -228,34 +213,107 @@ class TimeSeriesInterpolationJob(BatchJob):
 class TimeSeriesInterpolator(BaseTask):
 
     def __init__(self,
-                 src_dir_path_key: str = CONVERTED_DIR_PATH_KEY,
+                 src_dir_path_key: str = SRC_FILE_PATH_KEY,
                  dst_file_path_key: str = DST_FILE_PATH_KEY,
                  date_key: str = DATE_KEY,
-                 method_key: str = 'interpolation_method',
-                 max_gap_days_key: str = 'max_gap_days'):
+                 window_size_key: str = WINDOW_SIZE_KEY):
         super().__init__()
         self.src_dir_path_key = src_dir_path_key
         self.dst_file_path_key = dst_file_path_key
         self.date_key = date_key
-        self.method_key = method_key
-        self.max_gap_days_key = max_gap_days_key
+        self.window_size_key = window_size_key
 
     def execute(self, context: Context) -> Context:
         src_dir_path = context.get(self.src_dir_path_key)
         dst_file_path = context.get(self.dst_file_path_key)
-        target_date_str = context.get(self.date_key)
-        method = context.get(self.method_key, 'linear')
-        max_gap_days = context.get(self.max_gap_days_key)
+        date = context.get(self.date_key)
+        window_size = context.get(self.window_size_key)
 
-        interpolate_single_date_tiff(
+        tgt_file_path = os.path.join(src_dir_path, f"{date}{TIFF_SUFFIX}")
+
+        self._time_series_interpolate(
             src_dir_path=src_dir_path,
-            target_date_str=target_date_str,
+            tgt_file_path=tgt_file_path,
             dst_file_path=dst_file_path,
-            method=method,
-            max_gap_days=max_gap_days
+            window_size=window_size
         )
 
         return context
+
+    @staticmethod
+    def _time_series_interpolate(src_dir_path: str,
+                                 tgt_file_path: str,
+                                 dst_file_path: str,
+                                 window_size: int):
+        tgt_date_str = os.path.splitext(os.path.basename(tgt_file_path))[0]
+        tgt_date = datetime.strptime(tgt_date_str, '%Y%m%d')
+        data_store = ConvertedStore()
+
+        date_start = tgt_date - timedelta(days=window_size)
+        date_end = tgt_date + timedelta(days=window_size)
+
+        all_dates = sorted([os.path.splitext(f)[0] for f in os.listdir(src_dir_path)
+                            if f.endswith(TIFF_SUFFIX)])
+
+        window_dates = [(date_start + timedelta(days=i)).strftime('%Y%m%d')
+                        for i in range((date_end - date_start).days + 1)]
+
+        dates = [d for d in window_dates if d in all_dates]
+
+        if tgt_date_str not in dates:
+            raise ValueError(f"Target date {tgt_date_str} not found in available dates")
+
+        date_objects = [datetime.strptime(d, '%Y%m%d') for d in dates]
+        time_points = np.array([(d - date_objects[0]).days for d in date_objects])
+        tgt_idx = dates.index(tgt_date_str)
+        tgt_time = time_points[tgt_idx]
+
+        data_stack = np.stack([data_store.get(d, cache_used=True) for d in dates])
+
+        transform, crs, height, width = read_tiff_meta(tgt_file_path)
+
+        window_mask = np.abs(time_points - tgt_time) <= window_size
+        window_times = time_points[window_mask]
+        window_values = data_stack[window_mask, :, :]
+
+        # Linear Regression Interpolation
+        output_data = np.full((height, width), np.nan, dtype=np.float32)
+        for row in range(height):
+            for col in range(width):
+                pixel_window = window_values[:, row, col]
+                valid_mask = ~np.isnan(pixel_window)
+
+                if not np.any(valid_mask):
+                    continue
+
+                valid_values = pixel_window[valid_mask]
+                valid_times = window_times[valid_mask]
+
+                if len(valid_times) < 2:
+                    continue
+
+                coeff = np.polyfit(valid_times, valid_values, 1)
+                interpolated = np.polyval(coeff, tgt_time)
+                if not np.isnan(interpolated):
+                    output_data[row, col] = interpolated
+
+        write_tiff(output_data, dst_file_path, transform=transform, crs=crs, nodata=np.nan)
+
+
+class ConvertedStore(BaseDataStore[np.ndarray]):
+
+    def __init__(self):
+        super().__init__()
+        self.src_dir_path = CONVERTED_DIR_PATH
+
+    def get(self, date_str: str, cache_used: bool = True) -> np.ndarray:
+        return self._get(date_str, lambda: self._load(date_str), cache_used=cache_used)
+
+    def _load(self, date_str: str) -> np.ndarray:
+        file_path = os.path.join(self.src_dir_path, f"{date_str}{TIFF_SUFFIX}")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+        return read_tiff_data(file_path).astype(np.float32)
 
 
 if __name__ == "__main__":
