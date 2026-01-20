@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Description Diffusers-based Soil Moisture Downscaling Inferencer
+@Description DDPM-based Soil Moisture Downscaling Inferencer
 @Author Chris
 @Date 2025/12/12
 """
@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
-from dataset.dataset import InferenceDataset, GridInfoStore
+from datasets.dataset import InferenceDataset, GridInfoStore
 from module import NoisePredictor, build_device
 from trainer import build_scheduler, reverse_diffuse
 from utils.raster_util import write_tiff
@@ -21,6 +21,9 @@ from utils.date_util import get_valid_dates
 
 INFERENCE_STEP_NUM = 50
 BATCH_SIZE = 16384
+
+SM_MIN = 0.02
+SM_MAX = 0.5
 
 RESOLUTION = RESOLUTION_36KM
 
@@ -40,6 +43,9 @@ def main():
         # Inference
         pred_ys = inference(model=model, dataset=inference_dataset, device=device)
 
+        # Clip
+        pred_ys = np.clip(pred_ys, SM_MIN, SM_MAX)
+
         # Save Inference Result
         pred_map = np.full((grid_info["H"], grid_info["W"]), np.nan, dtype=np.float32)
         pred_map[inference_dataset.rows, inference_dataset.cols] = pred_ys
@@ -48,8 +54,7 @@ def main():
 
 
 def build_model() -> NoisePredictor:
-    model_save_path = os.path.join(CHECKPOINT_DIR_PATH, "SMDownscaling/Diffusers")
-    model = NoisePredictor.from_pretrained(model_save_path)
+    model = NoisePredictor.from_pretrained(DDPM_MODEL_PATH)
 
     return model
 
@@ -63,7 +68,7 @@ def inference(model: NoisePredictor, dataset: InferenceDataset, device: str) -> 
     pred_ys_list = []
     data_loader = DataLoader(dataset, batch_size=min(BATCH_SIZE, len(dataset)), shuffle=False)  # type: ignore[arg-type]
     insitu_stats = torch.from_numpy(dataset.insitu_stats).to(device).unsqueeze(0)
-    for batch_xs, batch_pos, batch_dates, batch_rows, batch_cols in tqdm(data_loader):
+    for batch_xs, batch_pos, batch_dates in tqdm(data_loader):
         batch_xs = batch_xs.to(device)
         batch_pos = batch_pos.to(device)
         B = batch_xs.shape[0]

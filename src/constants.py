@@ -12,6 +12,9 @@ ZIP_SUFFIX = ".zip"
 # 空间范围：Left Bottom Right Top
 RANGE = [-120, 35, -104, 49]
 
+DDPM_NAME = "DDPM"
+DDPM_MODEL_PATH = os.path.join("CHECKPOINTS", DDPM_NAME)
+
 # 基础路径
 PROJ_PATH = os.getenv("PROJ_PATH") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKPOINT_DIR_PATH = os.path.join(PROJ_PATH, "CHECKPOINTS")
@@ -52,3 +55,6 @@ RESOLUTION_1KM = "1km"
 REF_GRID_36KM_PATH = os.path.join(DATA_DIR_PATH, f"REF_GRID_{RESOLUTION_36KM}{TIFF_SUFFIX}")
 REF_GRID_1KM_PATH = os.path.join(DATA_DIR_PATH, f"REF_GRID_{RESOLUTION_1KM}{TIFF_SUFFIX}")
 
+RF_NAME = "RF"
+RF_DIR_PATH = os.path.join(DATA_DIR_PATH, RF_NAME)
+RF_MODEL_PATH = os.path.join(CHECKPOINT_DIR_PATH, RF_NAME, "model.pkl")

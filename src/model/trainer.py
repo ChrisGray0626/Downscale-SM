@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Diffusers-Based Soil Moisture Downscaling Trainer
+  @Description DDPM-Based Soil Moisture Downscaling Trainer
   @Author Chris
   @Date 2025/11/12
 """
@@ -13,7 +13,7 @@ from diffusers import DDPMScheduler
 from torch.utils.data import Dataset, DataLoader
 
 from constants import *
-from dataset.dataset import TrainDataset, InsituStatsStore
+from datasets.dataset import TrainDataset, InsituStatsStore
 from module import NoisePredictor, EarlyStopping, build_device
 
 # Dataset setting
@@ -58,8 +58,7 @@ def main():
     trainer = Trainer(model, train_dataset, val_dataset, insitu_stats_store)
     model = trainer.run()
 
-    model_save_path = os.path.join(CHECKPOINT_DIR_PATH, "SMDownscaling", "Diffusers")
-    model.save_pretrained(model_save_path)
+    model.save_pretrained(DDPM_MODEL_PATH)
 
 
 class Trainer:

@@ -10,93 +10,79 @@ class Evaluator:
         self.min_site_num = min_site_num
         self.min_date_num = min_date_num
 
-    def evaluate_by_date(self, pred_ys: np.ndarray, insitus: np.ndarray,
-                         insitu_masks: np.ndarray, dates: List[str],
-                         true_ys: Optional[np.ndarray] = None) -> pd.DataFrame:
-        pred_ys = pred_ys.flatten() if pred_ys.ndim == 2 else pred_ys
-        insitus = insitus.flatten() if insitus.ndim == 2 else insitus
-        insitu_masks = insitu_masks.flatten() if insitu_masks.ndim == 2 else insitu_masks
-        if true_ys is not None:
-            true_ys = true_ys.flatten() if true_ys.ndim == 2 else true_ys
+    def evaluate_by_date(self, pred: np.ndarray, true: np.ndarray,
+                         masks: np.ndarray, dates: List[str]) -> pd.DataFrame:
+        pred = pred.flatten()
+        true = true.flatten()
+        masks = masks.flatten()
 
-        data_dict = {
+        data = {
             'Date': dates,
-            'PredY': pred_ys,
-            'Insitu': insitus,
-            'InsituMask': insitu_masks
+            'Pred': pred,
+            'True': true,
+            'Mask': masks,
         }
-        if true_ys is not None:
-            data_dict['TrueY'] = true_ys
 
-        df = pd.DataFrame(data_dict)
+        df = pd.DataFrame(data)
         df_result = pd.DataFrame(
             df.groupby('Date').apply(self._calc_metrics_by_date, include_groups=False).dropna().tolist())
-        df_result = df_result.sort_values('InSitu_Corr_R2', ascending=False, na_position='last')
+        df_result = df_result.sort_values('Corr_R2', ascending=False, na_position='last')
         return df_result
 
     def _calc_metrics_by_date(self, group):
-        pred_y = group['PredY'].values
-        insitu = group['Insitu'].values
-        insitu_mask = group['InsituMask'].values
+        pred = group['Pred'].values
+        true = group['True'].values
+        mask = group['Mask'].values
 
-        if insitu_mask.sum() < self.min_site_num:
+        if mask.sum() < self.min_site_num:
             return None
 
         result = {
             'Date': group.name,
             'Total_Points': len(group),
-            'Valid_InSitu_Points': int(insitu_mask.sum())
+            'Valid_Points': int(mask.sum())
         }
 
-        if 'TrueY' in group.columns:
-            true_y_metrics = self._calc_metrics(pred_y, group['TrueY'].values)
-            result.update({f'TrueY_{k}': v for k, v in true_y_metrics.items()})
+        orig_metrics = self.calc_metrics(pred, true, mask)
+        result.update({f'Orig_{k}': v for k, v in orig_metrics.items()})
 
-        insitu_orig_metrics = self._calc_metrics(pred_y, insitu, insitu_mask)
-        result.update({f'InSitu_Orig_{k}': v for k, v in insitu_orig_metrics.items()})
-
-        insitu_valid = insitu[insitu_mask > 0]
-        systematic_bias = np.mean(pred_y[insitu_mask > 0] - insitu_valid)
-        pred_corrected = pred_y - systematic_bias
-        insitu_corr_metrics = self._calc_metrics(pred_corrected, insitu, insitu_mask)
-        result.update({f'InSitu_Corr_{k}': v for k, v in insitu_corr_metrics.items()})
+        true_valid = true[mask > 0]
+        systematic_bias = np.mean(pred[mask > 0] - true_valid)
+        pred_corrected = pred - systematic_bias
+        corr_metrics = self.calc_metrics(pred_corrected, true, mask)
+        result.update({f'Corr_{k}': v for k, v in corr_metrics.items()})
         return result
 
-    def evaluate_by_site(self, pred_ys: np.ndarray, insitus: np.ndarray,
-                         insitu_masks: np.ndarray, dates: List[str],
-                         rows: np.ndarray, cols: np.ndarray,
-                         true_ys: Optional[np.ndarray] = None) -> pd.DataFrame:
-        pred_ys = pred_ys.flatten() if pred_ys.ndim == 2 else pred_ys
-        insitus = insitus.flatten() if insitus.ndim == 2 else insitus
-        insitu_masks = insitu_masks.flatten() if insitu_masks.ndim == 2 else insitu_masks
-        rows = rows.flatten() if rows.ndim > 1 else rows
-        cols = cols.flatten() if cols.ndim > 1 else cols
-        if true_ys is not None:
-            true_ys = true_ys.flatten() if true_ys.ndim == 2 else true_ys
+    def evaluate_by_site(self, pred: np.ndarray, true: np.ndarray,
+                         masks: np.ndarray, dates: List[str],
+                         rows: np.ndarray, cols: np.ndarray) -> pd.DataFrame:
+        pred = pred.flatten()
+        true = true.flatten()
+        masks = masks.flatten()
+        rows = rows.flatten()
+        cols = cols.flatten()
 
-        data_dict = {
+        data = {
             'Row': rows,
             'Col': cols,
             'Date': dates,
-            'PredY': pred_ys,
-            'Insitu': insitus,
-            'InsituMask': insitu_masks
+            'Pred': pred,
+            'True': true,
+            'Mask': masks,
         }
-        if true_ys is not None:
-            data_dict['TrueY'] = true_ys
 
-        df = pd.DataFrame(data_dict)
-        df_with_insitu = df[df['InsituMask'] > 0].copy()
-        results = df_with_insitu.groupby(['Row', 'Col']).apply(self._calc_metrics_by_site,
-                                                               include_groups=False).dropna()
+        df = pd.DataFrame(data)
+        df_valid = df[df['Mask'] > 0].copy()
+        results = df_valid.groupby(['Row', 'Col']).apply(self._calc_metrics_by_site,
+                                                         include_groups=False).dropna()
         df_result = pd.DataFrame(list(results))
-        df_result = df_result.sort_values('InSitu_Corr_R2', ascending=False, na_position='last')
+        df_result = df_result.sort_values('Corr_R2', ascending=False, na_position='last')
         return df_result
 
     def _calc_metrics_by_site(self, group):
-        pred_y = group['PredY'].values
-        insitu = group['Insitu'].values
-        insitu_mask = group['InsituMask'].values
+        pred = group['Pred'].values
+        true = group['True'].values
+        mask = group['Mask'].values
 
         if len(group) < self.min_date_num:
             return None
@@ -105,25 +91,21 @@ class Evaluator:
         result = {
             'Row': int(row),
             'Col': int(col),
-            'Valid_InSitu_Dates': len(group)
+            'Valid_Dates': len(group)
         }
 
-        if 'TrueY' in group.columns:
-            true_y_metrics = self._calc_metrics(pred_y, group['TrueY'].values)
-            result.update({f'TrueY_{k}': v for k, v in true_y_metrics.items()})
+        orig_metrics = self.calc_metrics(pred, true, mask)
+        result.update({f'Orig_{k}': v for k, v in orig_metrics.items()})
 
-        insitu_orig_metrics = self._calc_metrics(pred_y, insitu, insitu_mask)
-        result.update({f'InSitu_Orig_{k}': v for k, v in insitu_orig_metrics.items()})
-
-        insitu_valid = insitu[insitu_mask > 0]
-        systematic_bias = np.mean(pred_y[insitu_mask > 0] - insitu_valid)
-        pred_corrected = pred_y - systematic_bias
-        insitu_corr_metrics = self._calc_metrics(pred_corrected, insitu, insitu_mask)
-        result.update({f'InSitu_Corr_{k}': v for k, v in insitu_corr_metrics.items()})
+        true_valid = true[mask > 0]
+        systematic_bias = np.mean(pred[mask > 0] - true_valid)
+        pred_corrected = pred - systematic_bias
+        corr_metrics = self.calc_metrics(pred_corrected, true, mask)
+        result.update({f'Corr_{k}': v for k, v in corr_metrics.items()})
         return result
 
     @staticmethod
-    def _calc_metrics(pred, true, mask=None):
+    def calc_metrics(pred, true, mask=None):
         if mask is not None:
             pred = pred[mask > 0]
             true = true[mask > 0]
@@ -142,8 +124,8 @@ class Evaluator:
                                          figsize: tuple = (16, 6)):
         rows = df_site_results['Row'].values
         cols = df_site_results['Col'].values
-        error_values = df_site_results['InSitu_Corr_ubRMSE'].values
-        r2_values = df_site_results['InSitu_Corr_R2'].values
+        error_values = df_site_results['Corr_ubRMSE'].values
+        r2_values = df_site_results['Corr_R2'].values
 
         n_points = len(rows)
         use_scatter = n_points < height * width * 0.01
@@ -193,22 +175,22 @@ class Evaluator:
             metric_grid[rows[i], cols[i]] = metric_values[i]
         return metric_grid
 
-    def evaluate_overall(self, pred_ys: np.ndarray, insitus: np.ndarray,
-                         insitu_masks: np.ndarray) -> dict:
-        pred_ys = pred_ys.flatten() if pred_ys.ndim > 1 else pred_ys
-        insitus = insitus.flatten() if insitus.ndim > 1 else insitus
-        insitu_masks = insitu_masks.flatten() if insitu_masks.ndim > 1 else insitu_masks
+    def evaluate_overall(self, pred: np.ndarray, true: np.ndarray,
+                         masks: np.ndarray) -> dict:
+        pred = pred.flatten()
+        true = true.flatten()
+        masks = masks.flatten()
 
-        valid_mask = insitu_masks > 0
-        pred_valid = pred_ys[valid_mask]
-        insitu_valid = insitus[valid_mask]
+        valid = masks > 0
+        pred_valid = pred[valid]
+        true_valid = true[valid]
 
         if len(pred_valid) == 0:
-            return {'Error': 'No valid in-situ data points'}
+            return {'Error': 'No valid data points'}
 
-        metrics = self._calc_metrics(pred_valid, insitu_valid)
+        metrics = self.calc_metrics(pred_valid, true_valid)
         n_valid = len(pred_valid)
-        mse = np.mean((pred_valid - insitu_valid) ** 2)
+        mse = np.mean((pred_valid - true_valid) ** 2)
         rmse = np.sqrt(mse)
 
         return {
@@ -217,9 +199,9 @@ class Evaluator:
             **metrics
         }
 
-    def print_overall(self, pred_ys: np.ndarray, insitus: np.ndarray,
-                      insitu_masks: np.ndarray, title: str = "Overall Evaluation"):
-        metrics = self.evaluate_overall(pred_ys, insitus, insitu_masks)
+    def print_overall(self, pred: np.ndarray, true: np.ndarray,
+                      masks: np.ndarray, title: str = "Overall Evaluation"):
+        metrics = self.evaluate_overall(pred, true, masks)
 
         if 'Error' in metrics:
             print(f"\n{title}: {metrics['Error']}")
@@ -228,7 +210,7 @@ class Evaluator:
         print(f"\n{'=' * 60}")
         print(f"{title}")
         print(f"{'=' * 60}")
-        print(f"Total Valid In-Situ Points: {metrics['Total_Valid_Points']:,}")
+        print(f"Total Valid Points: {metrics['Total_Valid_Points']:,}")
         print(f"\nMetrics:")
         print(f"  RMSE:      {metrics['RMSE']:.6f}")
         print(f"  ubRMSE:    {metrics['ubRMSE']:.6f}")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Description Diffusers-based Soil Moisture Downscaling Corrector
+@Description DDPM-based Soil Moisture Downscaling Corrector
 @Author Chris
 @Date 2025/12/12
 """
@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
-from dataset.dataset import CorrectionDataset, GridInfoStore
+from datasets.dataset import CorrectionDataset, GridInfoStore
 from module import BiasCorrector
 from utils.raster_util import write_tiff
 from utils.date_util import get_valid_dates

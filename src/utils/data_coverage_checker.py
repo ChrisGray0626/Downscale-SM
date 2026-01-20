@@ -10,7 +10,7 @@ import os
 import pandas as pd
 
 from constants import RESULT_DIR_PATH, RESOLUTION_36KM, NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME, SM_NAME, IN_SITU_NAME
-from dataset.dataset import DataCoverageDataset
+from datasets.dataset import DataCoverageDataset
 
 
 def main():

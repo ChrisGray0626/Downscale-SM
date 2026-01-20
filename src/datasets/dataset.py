@@ -167,7 +167,6 @@ class InferenceDataset(Dataset):
 
         self.xs = xs.reshape(H * W, -1).astype(np.float32)
         self.pos = grid_info["pos"].reshape(H * W, -1).astype(np.float32)
-        self.grid_info = grid_info
         self.rows_full = grid_info["rows"].flatten()
         self.cols_full = grid_info["cols"].flatten()
 
@@ -207,7 +206,7 @@ class InferenceDataset(Dataset):
         row = self.rows[idx]
         col = self.cols[idx]
 
-        return xs, pos, date, row, col
+        return xs, pos, date
 
 
 class CorrectionDataset(Dataset):

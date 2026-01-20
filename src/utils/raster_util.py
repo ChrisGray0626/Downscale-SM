@@ -168,42 +168,6 @@ def interpolate_tiff(data, lons, lats, grid_path, dst_path, espg_code: int = 432
         dst.write(grid_data, 1)
 
 
-def interpolate(src_data, src_lon, src_lat, grid_path, dst_path, src_espg_code=4326):
-    with rasterio.open(grid_path) as grid:
-        dst_crs = grid.crs
-        dst_transform = grid.transform
-        dst_width = grid.width
-        dst_height = grid.height
-        dst_profile = grid.profile
-    src_crs = CRS.from_epsg(src_espg_code)
-    transformer = Transformer.from_crs(src_crs, dst_crs, always_xy=True)
-    x, y = transformer.transform(src_lon, src_lat)
-    # affine transform 是左上角为原点，计算中心坐标
-    col, row = np.meshgrid(np.arange(dst_width), np.arange(dst_height))
-    grid_x, grid_y = rasterio.transform.xy(dst_transform, row, col, offset='center')
-    grid_x = np.array(grid_x).reshape(dst_height, dst_width)
-    grid_y = np.array(grid_y).reshape(dst_height, dst_width)
-
-    data_interp = griddata(
-        (x.flatten(), y.flatten()),
-        src_data.flatten(),
-        (grid_x, grid_y),
-        method='linear'
-    )
-    data_interp_nearest = griddata(
-        (x.flatten(), y.flatten()),
-        src_data.flatten(),
-        (grid_x, grid_y),
-        method='nearest'
-    )
-    # 填补缺失值
-    data_interp = np.where(np.isnan(data_interp), data_interp_nearest, data_interp)
-
-    dst_profile.update(dtype='float32', count=1, nodata=np.nan, compress='lzw')
-    with rasterio.open(dst_path, "w", **dst_profile) as dst:
-        dst.write(data_interp.astype(np.float32), 1)
-
-
 def write_tiff(data,
                dst_file_path: str,
                transform: rasterio.Affine,
