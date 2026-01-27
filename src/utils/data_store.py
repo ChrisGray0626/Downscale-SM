@@ -5,11 +5,20 @@
   @Author Chris
   @Date 2026/1/15
 """
+import os
 import threading
 from typing import TypeVar, Generic, Dict, Hashable, Callable, Tuple
 
+import numpy as np
 
-__all__ = ['BaseDataStore']
+from constants import TIFF_SUFFIX
+from utils.date_util import list_date_from_dir
+from utils.raster_util import read_tiff_data
+
+__all__ = [
+    'BaseDataStore',
+    'TiffStore',
+]
 
 T = TypeVar("T")
 
@@ -46,3 +55,21 @@ class BaseDataStore(Generic[T]):
 
     def clear_cache(self) -> None:
         self._cache.clear()
+
+
+class TiffStore(BaseDataStore[np.ndarray]):
+
+    def __init__(self, base_dir: str, resolution: str):
+        super().__init__()
+        self.base_dir = base_dir
+        self.resolution = resolution
+
+    def get(self, date: str, cache_used: bool = True) -> np.ndarray:
+        return self._get((date,), lambda: self._load(date), cache_used=cache_used)
+
+    def _load(self, date: str) -> np.ndarray:
+        file_path = os.path.join(self.base_dir, self.resolution, f"{date}{TIFF_SUFFIX}")
+        return read_tiff_data(file_path).astype(np.float32)
+
+    def list_date(self):
+        return list_date_from_dir(os.path.join(self.base_dir, self.resolution))

@@ -5,18 +5,15 @@
 @Author Chris
 @Date 2025/12/12
 """
-import os
 import threading
-from typing import Optional
 
 import numpy as np
 from torch.utils.data import Dataset
 
 from constants import *
-from datasets.dataset import DataStore, GridInfoStore
-from utils.data_store import BaseDataStore
+from datasets.dataset import ModelDataStore, GridInfoStore
+from utils.data_store import TiffStore
 from utils.date_util import get_valid_dates
-from utils.raster_util import read_tiff_data
 
 
 class RFTrainDataset(Dataset):
@@ -35,7 +32,7 @@ class RFTrainDataset(Dataset):
             return
 
         self.resolution = RESOLUTION_36KM
-        self.data_store = DataStore(resolution=self.resolution)
+        self.data_store = ModelDataStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
 
         self._load_data()
@@ -108,7 +105,7 @@ class RFInferenceDataset(Dataset):
     def __init__(self, date: str, resolution: str):
         self.date = date
         self.resolution = resolution
-        self.data_store = DataStore(resolution=self.resolution)
+        self.data_store = ModelDataStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self.train_dataset = RFTrainDataset()
 
@@ -146,3 +143,9 @@ class RFInferenceDataset(Dataset):
 
     def __len__(self):
         return len(self.xs)
+
+
+class RFResultStore(TiffStore):
+    def __init__(self, resolution: str):
+        base_dir = RF_DIR_PATH
+        super().__init__(base_dir, resolution)

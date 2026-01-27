@@ -5,6 +5,7 @@
   @Author Chris
   @Date 2025/11/23
 """
+import glob
 import os
 import re
 from datetime import timedelta, datetime
@@ -52,3 +53,14 @@ def is_valid_date(date: str):
 def get_valid_dates():
     tgt_dates = read_txt(VALID_DATE_FILE_PATH)
     return tgt_dates
+
+
+def list_date_from_dir(dir_path: str, suffix: str = TIFF_SUFFIX):
+    if not os.path.isdir(dir_path):
+        return []
+    out = []
+    for p in glob.glob(os.path.join(dir_path, f"*{suffix}")):
+        m = re.search(r"(\d{8})", os.path.basename(p))
+        if m:
+            out.append(m.group(1))
+    return sorted(set(out))

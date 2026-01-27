@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Description Random Forest Trainer for Soil Moisture Downscaling
-Train a global RF model mapping 5 auxiliary variables to SM
+@Description Random Forest Trainer
 @Author Chris
 @Date 2025/12/12
 """
-import os
 import pickle
 
 import numpy as np
+from datasets.rf_dataset import RFTrainDataset
 from sklearn.ensemble import RandomForestRegressor
 from tqdm import tqdm
 
 from constants import *
-from datasets.rf_dataset import RFTrainDataset
 from evaluation.evaluator import Evaluator
 
 # Random Forest settings

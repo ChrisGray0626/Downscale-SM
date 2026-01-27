@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Description Random Forest Inferencer for Soil Moisture Downscaling
-Use global RF model to predict SM from 5 auxiliary variables
+@Description Random Forest Inferencer
 @Author Chris
 @Date 2025/12/12
 """
-import os
 import pickle
 
 import numpy as np
@@ -15,7 +13,7 @@ from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import GridInfoStore
-from datasets.rf_dataset import RFInferenceDataset
+from rf_dataset import RFInferenceDataset
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -23,9 +21,7 @@ RESOLUTION = RESOLUTION_36KM
 
 
 def main():
-    # Load Model
-    with open(RF_MODEL_PATH, 'rb') as f:
-        rf: RandomForestRegressor = pickle.load(f)
+    model = build_model()
 
     grid_info = GridInfoStore(RESOLUTION).get()
     H, W = grid_info["H"], grid_info["W"]
@@ -36,7 +32,7 @@ def main():
     for date in tqdm(get_valid_dates(), desc="Inference"):
         inference_dataset = RFInferenceDataset(date=date, resolution=RESOLUTION)
         xs = inference_dataset.xs
-        pred_ys = rf.predict(xs)
+        pred_ys = model.predict(xs)
         pred_ys = inference_dataset.denorm_y(pred_ys).astype(np.float32)
 
         pred_map = np.full((H, W), np.nan, dtype=np.float32)
@@ -50,6 +46,13 @@ def main():
             transform=grid_info["transform"],
             crs=grid_info["crs"]
         )
+
+
+def build_model():
+    with open(RF_MODEL_PATH, 'rb') as f:
+        rf: RandomForestRegressor = pickle.load(f)
+
+    return rf
 
 
 if __name__ == "__main__":

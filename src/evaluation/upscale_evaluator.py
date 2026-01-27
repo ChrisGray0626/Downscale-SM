@@ -11,7 +11,7 @@ import rasterio
 from rasterio.warp import reproject, Resampling
 
 from constants import *
-from datasets.dataset import DataStore, GridInfoStore
+from datasets.dataset import ModelDataStore, GridInfoStore
 from evaluation.evaluator import Evaluator
 from utils.date_util import get_valid_dates
 
@@ -24,7 +24,7 @@ elif METHOD_NAME == DDPM_NAME:
 
 
 def main():
-    data_store = DataStore(resolution=RESOLUTION_36KM)
+    data_store = ModelDataStore(resolution=RESOLUTION_36KM)
     grid_info = GridInfoStore(resolution=RESOLUTION_36KM).get()
 
     H, W = grid_info["H"], grid_info["W"]
