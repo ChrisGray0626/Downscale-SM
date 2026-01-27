@@ -20,8 +20,10 @@ PROJ_PATH = os.getenv("PROJ_PATH") or os.path.dirname(os.path.dirname(os.path.ab
 CHECKPOINT_DIR_PATH = os.path.join(PROJ_PATH, "CHECKPOINTS")
 RESULT_DIR_PATH = os.path.join(PROJ_PATH, "RESULTS")
 DATA_DIR_PATH = os.getenv("DATA_DIR_PATH", "/Volumes/Elements SE/Data/SMDownscaling")
-RAW_DIR_PATH: str = os.path.join(DATA_DIR_PATH, "Raw/2016-2020")
-PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, "Processed")
+RAW_NAME = "Raw"
+RAW_DIR_PATH = os.path.join(DATA_DIR_PATH, "Raw/2016-2020")
+PROCESSED_NAME = "Processed"
+PROCESSED_DIR_PATH = os.path.join(DATA_DIR_PATH, PROCESSED_NAME)
 CONVERTED_DIR_NAME = "Converted"
 INTERPOLATED_DIR_NAME = "Interpolated"
 MERGED_DIR_NAME = "Merged"
@@ -47,7 +49,7 @@ ALBEDO_NAME = "Albedo"
 PRECIPITATION_NAME = "Precipitation"
 DEM_NAME = "DEM"
 IN_SITU_NAME = "InSitu"
-
+ESA_CCI_NAME = "ESA-CCI-SM"
 RESOLUTION_36KM = "36km"
 RESOLUTION_1KM = "1km"
 
