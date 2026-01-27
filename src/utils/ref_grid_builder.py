@@ -10,17 +10,29 @@ import numpy as np
 from pyproj import CRS, Transformer
 from rasterio.transform import from_origin
 
-from constants import RANGE, RESOLUTION_1KM, RESOLUTION_36KM, REF_GRID_1KM_PATH, REF_GRID_36KM_PATH
+from constants import RANGE, RESOLUTION_1KM, RESOLUTION_36KM, REF_GRID_1KM_PATH, REF_GRID_36KM_PATH, RESOLUTION_25KM, \
+    REF_GRID_25KM_PATH
 from utils.raster_util import write_tiff
+
+
+def main():
+    build_ref_grid(RESOLUTION_1KM)
+    build_ref_grid(RESOLUTION_25KM)
+    build_ref_grid(RESOLUTION_36KM)
 
 
 def build_ref_grid(resolution: str):
     if resolution == RESOLUTION_1KM:
         resolution_num = 1000
         dst_path = REF_GRID_1KM_PATH
-    else:
+    elif resolution == RESOLUTION_25KM:
+        resolution_num = 25000
+        dst_path = REF_GRID_25KM_PATH
+    elif resolution == RESOLUTION_36KM:
         resolution_num = 36000
         dst_path = REF_GRID_36KM_PATH
+    else:
+        return
 
     lon_min, lat_min, lon_max, lat_max = RANGE
 
@@ -44,11 +56,6 @@ def build_ref_grid(resolution: str):
     transform = from_origin(x_min_aligned, y_max_aligned, resolution_num, resolution_num)
 
     write_tiff(fill_values, dst_path, transform=transform, crs=ease_crs, nodata=np.nan)
-
-
-def main():
-    build_ref_grid(RESOLUTION_1KM)
-    build_ref_grid(RESOLUTION_36KM)
 
 
 if __name__ == "__main__":

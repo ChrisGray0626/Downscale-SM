@@ -41,7 +41,7 @@ class BatchConvert2TiffJob(BatchJob):
 
     def build_batch_context(self, context: Context) -> List[Context]:
         src_dir_path = context.get(self.src_dir_path_key)
-        src_file_paths = glob.glob(os.path.join(src_dir_path, f"*{NETCDF_SUFFIX}"))
+        src_file_paths = glob.glob(os.path.join(src_dir_path, f"*{NETCDF4_SUFFIX}"))
         dst_dir_path = context.get(self.dst_dir_path_key)
 
         os.makedirs(dst_dir_path, exist_ok=True)
