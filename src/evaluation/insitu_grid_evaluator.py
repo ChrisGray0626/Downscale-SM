@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description 36km dataset vs in-situ evaluation
+  @Description In-situ vs gridded product evaluation on reference grid
   @Author Chris
   @Date 2026/1/27
 """
@@ -13,45 +13,53 @@ from datasets.dataset import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 
-PRODUCT_NAME = DDPM_NAME
-RESOLUTION = RESOLUTION_36KM
+PROD_NAMES = [DDPM_NAME, RF_NAME]
+RESOLUTIONS = [RESOLUTION_1KM]
 
 
 def main():
-    dataset = Insitu36kmEvalDataset(PRODUCT_NAME)
-    pred_map, insitu_map, insitu_masks, dates, rows, cols = dataset.get_all()
-    grid_info = dataset.grid_info
-
     evaluator = Evaluator(min_site_num=2, min_date_num=2)
 
-    evaluator.print_overall(
-        pred_map, insitu_map, insitu_masks,
-        title=f"Overall Evaluation: 36km {PRODUCT_NAME} vs InSitu Data",
-    )
+    for resolution in RESOLUTIONS:
+        for product_name in PROD_NAMES:
+            dataset = InsituGridEvalDataset(product_name, resolution=resolution)
+            pred_map, insitu_map, insitu_masks, dates, rows, cols = dataset.get_all()
+            grid_info = dataset.grid_info
 
-    print("\n" + "=" * 60)
-    print(f"Evaluation by Date:  36km {PRODUCT_NAME} vs InSitu Data")
-    print("=" * 60)
-    df_date = evaluator.evaluate_by_date(pred_map, insitu_map, insitu_masks, dates)
-    df_date.to_csv(os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_36km_{PRODUCT_NAME}_By_Date.csv"), index=False)
+            title = f"Overall Evaluation: {resolution} {product_name} vs InSitu Data"
+            evaluator.print_overall(pred_map, insitu_map, insitu_masks, title=title)
 
-    print("\n" + "=" * 60)
-    print(f"Evaluation by Site:  36km {PRODUCT_NAME} vs InSitu Data")
-    print("=" * 60)
-    df_site = evaluator.evaluate_by_site(pred_map, insitu_map, insitu_masks, dates, rows, cols)
-    df_site.to_csv(os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_36km_{PRODUCT_NAME}_By_Site.csv"), index=False)
+            df_date = evaluator.evaluate_by_date(pred_map, insitu_map, insitu_masks, dates)
 
-    evaluator.evaluate_by_spatial_distribution(df_site, height=grid_info["H"], width=grid_info["W"])
+            dst_file_path = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_By_Date_{resolution}",
+                                         f"{product_name}.csv")
+            os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
+            df_date.to_csv(dst_file_path, index=False)
+
+            df_site = evaluator.evaluate_by_site(pred_map, insitu_map, insitu_masks, dates, rows, cols)
+
+            dst_file_path = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_By_Site_{resolution}",
+                                         f"{product_name}.csv")
+            os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
+            df_date.to_csv(dst_file_path, index=False)
+
+            evaluator.evaluate_by_spatial_distribution(
+                df_site, height=grid_info["H"], width=grid_info["W"]
+            )
 
 
-class Insitu36kmEvalDataset:
-    def __init__(self, product_name, resolution=RESOLUTION):
+class InsituGridEvalDataset:
+    def __init__(self, product_name, resolution):
         self.product_name = product_name
         self.resolution = resolution
         self.pred_store = build_pred_store(product_name, resolution)
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()
+
+    @property
+    def _dates(self):
+        return sorted(set(self.insitu_store.list_date()) & set(self.pred_store.list_date()))
 
     def get_all(self):
         H, W = self._grid_info["H"], self._grid_info["W"]
@@ -60,7 +68,7 @@ class Insitu36kmEvalDataset:
 
         all_pred, all_insitu, all_masks, all_dates, all_rows, all_cols = [], [], [], [], [], []
 
-        for date in self.pred_store.list_date():
+        for date in self._dates:
             pred_map = self.pred_store.get(date).astype(np.float32)
             insitu_map = self.insitu_store.get(date).astype(np.float32)
 
