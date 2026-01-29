@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -105,20 +105,63 @@ class Evaluator:
         return result
 
     @staticmethod
-    def calc_metrics(pred, true, mask=None):
+    def _valid(pred, true, mask=None):
         if mask is not None:
-            pred = pred[mask > 0]
-            true = true[mask > 0]
-        mse = np.mean((pred - true) ** 2)
-        bias = np.mean(pred - true)
-        ubrmse = np.sqrt(np.clip(mse - bias ** 2, 0, None))
-        ss_res = np.sum((true - pred) ** 2)
-        ss_tot = np.sum((true - np.mean(true)) ** 2)
-        r2 = 1 - (ss_res / ss_tot) if ss_tot > 1e-8 else (1.0 if ss_res < 1e-8 else np.nan)
-        true_var = np.var(true)
-        slope = np.cov(pred, true)[0, 1] / true_var if true_var > 1e-8 else np.nan
-        return {'ubRMSE': ubrmse, 'Bias': bias, 'R2': r2 if np.isfinite(r2) else np.nan,
-                'Slope': slope if np.isfinite(slope) else np.nan}
+            pred, true = pred[mask > 0], true[mask > 0]
+        return (pred, true) if len(pred) >= 2 else (None, None)
+
+    @staticmethod
+    def bias(pred, true, mask=None):
+        p, t = Evaluator._valid(pred, true, mask)
+        return np.mean(p - t) if p is not None else np.nan
+
+    @staticmethod
+    def ubrmse(pred, true, mask=None):
+        p, t = Evaluator._valid(pred, true, mask)
+        if p is None:
+            return np.nan
+        mse = np.mean((p - t) ** 2)
+        b = np.mean(p - t)
+        return np.sqrt(np.clip(mse - b ** 2, 0, None))
+
+    @staticmethod
+    def r2(pred, true, mask=None):
+        p, t = Evaluator._valid(pred, true, mask)
+        if p is None:
+            return np.nan
+        ss_res = np.sum((t - p) ** 2)
+        ss_tot = np.sum((t - np.mean(t)) ** 2)
+        if ss_tot <= 1e-8:
+            return 1.0 if ss_res < 1e-8 else np.nan
+        r2_val = 1 - ss_res / ss_tot
+        return r2_val if np.isfinite(r2_val) else np.nan
+
+    @staticmethod
+    def r(pred, true, mask=None):
+        p, t = Evaluator._valid(pred, true, mask)
+        if p is None or np.std(p) < 1e-12 or np.std(t) < 1e-12:
+            return np.nan
+        return np.corrcoef(p, t)[0, 1]
+
+    @staticmethod
+    def slope(pred, true, mask=None):
+        p, t = Evaluator._valid(pred, true, mask)
+        if p is None:
+            return np.nan
+        v = np.var(t)
+        if v <= 1e-8:
+            return np.nan
+        s = np.cov(p, t)[0, 1] / v
+        return s if np.isfinite(s) else np.nan
+
+    @staticmethod
+    def calc_metrics(pred, true, mask=None):
+        return {
+            'ubRMSE': Evaluator.ubrmse(pred, true, mask),
+            'Bias': Evaluator.bias(pred, true, mask),
+            'R2': Evaluator.r2(pred, true, mask),
+            'Slope': Evaluator.slope(pred, true, mask),
+        }
 
     def evaluate_by_spatial_distribution(self, df_site_results: pd.DataFrame, height: int, width: int,
                                          figsize: tuple = (16, 6)):

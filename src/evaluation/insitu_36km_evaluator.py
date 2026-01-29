@@ -9,12 +9,12 @@
 import numpy as np
 
 from constants import *
-from datasets.dataset import GridInfoStore, InsituStore, CorrectionResultStore
-from esa_cci.esa_cci_dataset import ESACCIStore
+from datasets.dataset import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
-from rf.rf_dataset import RFResultStore
+from evaluation.pred_store import build_pred_store
 
 PRODUCT_NAME = DDPM_NAME
+RESOLUTION = RESOLUTION_36KM
 
 
 def main():
@@ -45,23 +45,13 @@ def main():
 
 
 class Insitu36kmEvalDataset:
-    def __init__(self, product_name):
+    def __init__(self, product_name, resolution=RESOLUTION):
         self.product_name = product_name
-        self.resolution = RESOLUTION_36KM
-        self.pred_store = self._build_pred_store(product_name)
+        self.resolution = resolution
+        self.pred_store = build_pred_store(product_name, resolution)
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()
-
-    @staticmethod
-    def _build_pred_store(product_name: str):
-        if product_name == ESA_CCI_NAME:
-            return ESACCIStore(resolution=RESOLUTION_36KM)
-        elif product_name == RF_NAME:
-            return RFResultStore(resolution=RESOLUTION_36KM)
-        elif product_name == DDPM_NAME:
-            return CorrectionResultStore(resolution=RESOLUTION_36KM)
-        raise ValueError(f"Unknown product name: {product_name}")
 
     def get_all(self):
         H, W = self._grid_info["H"], self._grid_info["W"]
