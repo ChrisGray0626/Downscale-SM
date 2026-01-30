@@ -18,7 +18,7 @@ from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 from utils.util import suppress_linalg_in_worker
 
-RESOLUTION = RESOLUTION_36KM
+RESOLUTION = RESOLUTION_1KM
 
 
 def main():
