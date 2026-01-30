@@ -14,5 +14,5 @@ services:
     volumes:
       - ./src:/App/src
       - ./CHECKPOINTS:/App/CHECKPOINTS
-      - /Volumes/Elements SE/Data/Downscale-DM:/DATA
-    command: python src/Inferencer.py
+      - /Volumes/Elements SE/Data/SMDownscaling:/DATA
+    command: python src/model/inferencer.py

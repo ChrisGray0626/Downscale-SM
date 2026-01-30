@@ -15,7 +15,12 @@ from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 from utils.date_util import get_valid_dates
 
-METHOD_NAMES = [RF_NAME, DDPM_NAME]
+PROD_NAMES = [
+    DDPM_NAME,
+    RF_NAME,
+    GWR_NAME,
+    RESNET_NAME,
+]
 
 
 def main():
@@ -27,7 +32,7 @@ def main():
     dates = get_valid_dates()
     evaluator = Evaluator()
 
-    for method_name in METHOD_NAMES:
+    for method_name in PROD_NAMES:
         pred_store_1km = build_pred_store(method_name, resolution=RESOLUTION_1KM)
 
         all_pred, all_true, all_masks, all_dates = [], [], [], []

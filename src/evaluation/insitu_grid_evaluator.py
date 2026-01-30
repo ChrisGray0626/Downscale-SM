@@ -13,8 +13,16 @@ from datasets.dataset import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 
-PROD_NAMES = [DDPM_NAME, RF_NAME]
-RESOLUTIONS = [RESOLUTION_1KM]
+PROD_NAMES = [
+    DDPM_NAME,
+    RF_NAME,
+    GWR_NAME,
+    RESNET_NAME,
+]
+RESOLUTIONS = [
+    RESOLUTION_36KM,
+    RESOLUTION_1KM,
+]
 
 
 def main():

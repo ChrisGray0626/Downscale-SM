@@ -124,6 +124,7 @@ class CommonTrainDataset(Dataset):
         return len(self.dates)
 
 
+# TODO CommonInferenceDataset
 class CommonInferenceDataset(Dataset):
 
     def __init__(self, date: str, resolution: str):
