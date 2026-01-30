@@ -12,15 +12,7 @@ import threading
 import numpy as np
 from torch.utils.data import Dataset
 
-from constants import (
-    RESOLUTION_36KM,
-    NDVI_NAME,
-    LST_NAME,
-    ALBEDO_NAME,
-    PRECIPITATION_NAME,
-    DEM_NAME,
-    SM_NAME,
-)
+from constants import *
 from datasets.dataset import ModelDataStore, GridInfoStore
 from utils.date_util import get_valid_dates
 
@@ -100,7 +92,6 @@ class CommonTrainDataset(Dataset):
         return ys * self.y_std + self.y_mean
 
     def get_all(self):
-        """Return all pixel-level elements (pos, y, X, dates, rows, cols). Subclasses extract what they need."""
         rows_grid = self.grid_info["rows"]
         cols_grid = self.grid_info["cols"]
         X_list, y_list, pos_list, date_list, rows_list, cols_list = [], [], [], [], [], []
@@ -119,12 +110,12 @@ class CommonTrainDataset(Dataset):
             rows_list.append(rows_flat)
             cols_list.append(cols_flat)
         return {
-            "pos": np.concatenate(pos_list, axis=0),
-            "ys": np.concatenate(y_list, axis=0).reshape(-1, 1).astype(np.float64),
-            "xs": np.concatenate(X_list, axis=0),
-            "dates": np.concatenate(date_list, axis=0),
-            "rows": np.concatenate(rows_list, axis=0),
-            "cols": np.concatenate(cols_list, axis=0),
+            DATE_NAME: np.concatenate(date_list, axis=0),
+            POS_NAME: np.concatenate(pos_list, axis=0),
+            ROW_NAME: np.concatenate(rows_list, axis=0),
+            COL_NAME: np.concatenate(cols_list, axis=0),
+            X_NAME: np.concatenate(X_list, axis=0),
+            Y_NAME: np.concatenate(y_list, axis=0),
         }
 
     def __len__(self):
@@ -167,6 +158,15 @@ class CommonInferenceDataset(Dataset):
 
     def _norm(self):
         self.xs = (self.xs - self.train_dataset.x_mean) / self.train_dataset.x_std
+
+    def get_all(self):
+        return {
+            DATE_NAME: self.date,
+            POS_NAME: self.pos,
+            ROW_NAME: self.rows,
+            COL_NAME: self.cols,
+            X_NAME: self.xs,
+        }
 
     def denorm_y(self, ys: np.ndarray) -> np.ndarray:
         return self.train_dataset.denorm_y(ys)

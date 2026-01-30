@@ -30,13 +30,13 @@ def main():
     dst_dir_path = os.path.join(RF_DIR_PATH, RESOLUTION)
     os.makedirs(dst_dir_path, exist_ok=True)
     for date in tqdm(get_valid_dates(), desc="Inference"):
-        inference_dataset = RFInferenceDataset(date=date, resolution=RESOLUTION)
-        xs = inference_dataset.xs
+        dataset = RFInferenceDataset(date=date, resolution=RESOLUTION)
+        rows, cols, xs = dataset.get_all()
         pred_ys = model.predict(xs)
-        pred_ys = inference_dataset.denorm_y(pred_ys).astype(np.float32)
+        pred_ys = dataset.denorm_y(pred_ys).astype(np.float32)
 
         pred_map = np.full((H, W), np.nan, dtype=np.float32)
-        pred_map[inference_dataset.rows, inference_dataset.cols] = pred_ys
+        pred_map[rows, cols] = pred_ys
 
         # Save Inference Result
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")

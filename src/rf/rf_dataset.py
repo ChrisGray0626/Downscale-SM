@@ -15,11 +15,14 @@ class RFTrainDataset(CommonTrainDataset):
 
     def get_all(self):
         data = super().get_all()
-        return data["xs"], data["ys"].ravel()
+        return data[X_NAME], data[Y_NAME]
 
 
 class RFInferenceDataset(CommonInferenceDataset):
-    pass
+
+    def get_all(self):
+        data = super().get_all()
+        return data[ROW_NAME], data[COL_NAME], data[X_NAME]
 
 
 class RFResultStore(TiffStore):
