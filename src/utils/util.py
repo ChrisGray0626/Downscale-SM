@@ -1,7 +1,8 @@
+import warnings
 import zipfile
 
 import numpy as np
-import torch
+import scipy
 from affine import Affine
 from pyproj import Transformer
 from rasterio.transform import from_origin
@@ -69,3 +70,7 @@ def build_transform_from_lonlat(lons: np.ndarray, lats: np.ndarray) -> Affine:
     )
 
     return transform
+
+
+def suppress_linalg_in_worker():
+    warnings.filterwarnings("ignore", category=scipy.linalg.LinAlgWarning)

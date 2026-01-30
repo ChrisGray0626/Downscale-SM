@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  Common train/inference datasets with full variable set (grid, pos, features, SM).
+  Common train/inference datasets with full variable set (grid, lons, lats, features, SM).
   get_all: for pixel-level methods, returns all elements; inherit and extract what the method needs.
   __getitem__: left to subclasses (e.g. RF) to define.
   @Author Chris
@@ -109,9 +109,11 @@ class CommonTrainDataset(Dataset):
             date_list.append(np.full(flat_valid.sum(), self.dates[i], dtype=object))
             rows_list.append(rows_flat)
             cols_list.append(cols_flat)
+        pos_all = np.concatenate(pos_list, axis=0)
         return {
             DATE_NAME: np.concatenate(date_list, axis=0),
-            POS_NAME: np.concatenate(pos_list, axis=0),
+            LONGITUDE_NAME: pos_all[:, 0],
+            LATITUDE_NAME: pos_all[:, 1],
             ROW_NAME: np.concatenate(rows_list, axis=0),
             COL_NAME: np.concatenate(cols_list, axis=0),
             X_NAME: np.concatenate(X_list, axis=0),
@@ -162,7 +164,8 @@ class CommonInferenceDataset(Dataset):
     def get_all(self):
         return {
             DATE_NAME: self.date,
-            POS_NAME: self.pos,
+            LONGITUDE_NAME: self.pos[:, 0],
+            LATITUDE_NAME: self.pos[:, 1],
             ROW_NAME: self.rows,
             COL_NAME: self.cols,
             X_NAME: self.xs,

@@ -35,7 +35,10 @@ CORRECTION_DIR_PATH = os.path.join(DATA_DIR_PATH, "Correction")
 VALID_DATE_FILE_PATH = os.path.join(DATA_DIR_PATH, "VALID_DATES.txt")
 
 # 数据名称
+X_NAME = "X"
+Y_NAME = "Y"
 DATE_NAME = "Date"
+POS_NAME = "Pos"
 LONGITUDE_NAME = "Lon"
 LATITUDE_NAME = "Lat"
 PROJ_X_NAME = "ProjX"
@@ -64,3 +67,11 @@ REF_GRID_1KM_PATH = os.path.join(DATA_DIR_PATH, f"REF_GRID_{RESOLUTION_1KM}{TIFF
 RF_NAME = "RF"
 RF_DIR_PATH = os.path.join(DATA_DIR_PATH, RF_NAME)
 RF_MODEL_PATH = os.path.join(CHECKPOINT_DIR_PATH, RF_NAME, "model.pkl")
+
+GWR_NAME = "GWR"
+GWR_DIR_PATH = os.path.join(DATA_DIR_PATH, GWR_NAME)
+GWR_MODEL_PATH = os.path.join(CHECKPOINT_DIR_PATH, GWR_NAME, "model.pkl")
+
+RESNET_NAME = "ResNet"
+RESNET_DIR_PATH = os.path.join(DATA_DIR_PATH, RESNET_NAME)
+RESNET_MODEL_PATH = os.path.join(CHECKPOINT_DIR_PATH, RESNET_NAME, "model.pt")
