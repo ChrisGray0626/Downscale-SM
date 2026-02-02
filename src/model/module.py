@@ -12,12 +12,12 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
-import torch.nn.functional as F
 
 from constants import RANGE
 
@@ -119,6 +119,137 @@ class NoisePredictor(ModelMixin, ConfigMixin):
         out = self.output_layer(x)
 
         return out
+
+
+class ChannelAttention(nn.Module):
+    """Avg + Max pool -> shared MLP -> sigmoid -> scale. [B, C, H, W] -> [B, C, H, W]."""
+
+    def __init__(self, dim: int, reduction: int = 16):
+        super().__init__()
+        self.dim = dim
+        self.reduction = reduction
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        hidden_dim = max(dim // reduction, 1)
+        self.MLP = nn.Sequential(
+            nn.Linear(dim, hidden_dim, bias=False),
+            nn.SiLU(inplace=True),
+            nn.Linear(hidden_dim, dim, bias=False),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        avg_out = self.avg_pool(x).view(B, C)
+        max_out = self.max_pool(x).view(B, C)
+        avg_out = self.MLP(avg_out)
+        max_out = self.MLP(max_out)
+        out = self.sigmoid(avg_out + max_out).view(B, C, 1, 1)
+        return x * out
+
+
+class FiLMResBlock2D(nn.Module):
+    """2D Conv residual block with FiLM conditioning (scale/shift from global condition)."""
+
+    def __init__(self, channels: int, condition_dim: int):
+        super().__init__()
+        self.proj_cond = nn.Linear(condition_dim, channels * 2)
+        self.norm1 = nn.GroupNorm(min(8, channels), channels)
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.norm2 = nn.GroupNorm(min(8, channels), channels)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+
+    def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        scale_shift = self.proj_cond(condition)
+        scale, shift = scale_shift.chunk(2, dim=1)
+        scale = scale.reshape(B, C, 1, 1)
+        shift = shift.reshape(B, C, 1, 1)
+        h = self.norm1(x)
+        h = scale * h + shift
+        h = F.silu(h)
+        h = self.conv1(h)
+        h = self.norm2(h)
+        h = F.silu(h)
+        h = self.conv2(h)
+        return x + h
+
+
+class NoisePredictorImage(ModelMixin, ConfigMixin):
+    """DDPM noise predictor for full image: (B, 1, H, W) + (B, 5, H, W) -> (B, 1, H, W).
+    Architecture: stem -> [ChannelAttention -> ResBlock -> ChannelAttention] x N -> Conv2d."""
+
+    @register_to_config
+    def __init__(
+            self,
+            input_feature_num: int = 5,
+            hidden_dim: int = 128,
+            timestep_emb_dim: int = 128,
+            res_block_num: int = 3,
+            channel_attention_reduction: int = 16,
+            base_channels: int = None,
+            channels: int = None,
+            use_channel_attention: bool = None,
+    ):
+        super().__init__()
+        unified = hidden_dim or channels or 128
+        base_channels = base_channels if base_channels is not None else unified
+        hidden_dim = unified
+
+        self.input_feature_num = input_feature_num
+        in_channels = input_feature_num + 1
+
+        self.stem = nn.Sequential(
+            nn.Conv2d(in_channels, base_channels, kernel_size=3, padding=1),
+            nn.GroupNorm(min(8, base_channels), base_channels),
+            nn.SiLU(),
+        )
+
+        self.timestep_embedding = nn.Sequential(
+            SinusoidalPosEmb(timestep_emb_dim),
+            nn.Linear(timestep_emb_dim, timestep_emb_dim * 4),
+            nn.SiLU(),
+            nn.Linear(timestep_emb_dim * 4, hidden_dim),
+        )
+        self.time_embedding = TimeEmbedding(hidden_dim=hidden_dim, num_fourier=8)
+        self.insitu_stats_embedding = InsituStatsEmbedding(hidden_dim=hidden_dim, stats_dim=4)
+        self.condition_fusion = nn.Sequential(
+            nn.Linear(hidden_dim * 3, hidden_dim * 2),
+            nn.SiLU(),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+        )
+
+        self.net = nn.ModuleList()
+        for _ in range(res_block_num):
+            self.net.append(ChannelAttention(dim=base_channels, reduction=channel_attention_reduction))
+            self.net.append(FiLMResBlock2D(base_channels, hidden_dim))
+            self.net.append(ChannelAttention(dim=base_channels, reduction=channel_attention_reduction))
+        self.head = nn.Conv2d(base_channels, 1, kernel_size=3, padding=1)
+
+    def forward(
+            self,
+            diffused_ys: torch.Tensor,
+            xs: torch.Tensor,
+            timesteps: torch.Tensor,
+            dates: List[str],
+            insitu_stats: torch.Tensor,
+    ) -> torch.Tensor:
+        x = torch.cat([xs, diffused_ys], dim=1)
+        x = self.stem(x)
+
+        embed_t = self.timestep_embedding(timesteps)
+        embed_time = self.time_embedding(dates)
+        embed_insitu = self.insitu_stats_embedding(insitu_stats)
+        condition = torch.cat([embed_t, embed_time, embed_insitu], dim=1)
+        condition = self.condition_fusion(condition)
+
+        for i, m in enumerate(self.net):
+            if isinstance(m, FiLMResBlock2D):
+                x = m(x, condition)
+            else:
+                x = m(x)
+
+        return self.head(x)
 
 
 class SinusoidalPosEmb(nn.Module):

@@ -15,7 +15,7 @@ from resnet.resnet_dataset import ResNetTrainDataset
 from resnet.resnet_model import ResNet, save_checkpoint, DEFAULT_CONFIG
 
 BATCH_SIZE = 1
-EPOCHS = 80
+EPOCHS = 128
 
 
 def main():
