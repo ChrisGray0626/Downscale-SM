@@ -13,11 +13,10 @@ from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import InferenceDataset, GridInfoStore
-from module import NoisePredictor, build_device
-from trainer import build_scheduler, reverse_diffuse
-from utils.raster_util import write_tiff
+from model.module import NoisePredictor, build_device
+from model.trainer import build_scheduler, reverse_diffuse
 from utils.date_util import get_valid_dates
-
+from utils.raster_util import write_tiff
 
 INFERENCE_STEP_NUM = 50
 BATCH_SIZE = 16384

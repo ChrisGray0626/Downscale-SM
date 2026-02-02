@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import GridInfoStore
-from rf_dataset import RFInferenceDataset
+from rf.rf_dataset import RFInferenceDataset
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 

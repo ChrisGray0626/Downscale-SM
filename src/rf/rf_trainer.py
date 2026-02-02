@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 from constants import *
 from evaluation.evaluator import Evaluator
-from rf_dataset import RFTrainDataset
+from rf.rf_dataset import RFTrainDataset
 
 # Random Forest settings
 N_ESTIMATORS = 100

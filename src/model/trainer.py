@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from constants import *
 from datasets.dataset import TrainDataset, InsituStatsStore
-from module import NoisePredictor, EarlyStopping, build_device
+from model.module import NoisePredictor, EarlyStopping, build_device
 
 # Dataset setting
 INPUT_FEATURE_NUM = 5

@@ -12,9 +12,9 @@ from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import CorrectionDataset, GridInfoStore
-from module import BiasCorrector
-from utils.raster_util import write_tiff
+from model.module import BiasCorrector
 from utils.date_util import get_valid_dates
+from utils.raster_util import write_tiff
 
 BATCH_SIZE = 16384
 SM_MIN = 0.02

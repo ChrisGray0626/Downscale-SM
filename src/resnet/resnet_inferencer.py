@@ -12,12 +12,12 @@ from tqdm import tqdm
 from constants import *
 from datasets.dataset import GridInfoStore
 from model.module import build_device
-from resnet_dataset import ResNetInferenceDataset
-from resnet_model import load_checkpoint
+from resnet.resnet_dataset import ResNetInferenceDataset
+from resnet.resnet_model import load_checkpoint
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
-RESOLUTION = RESOLUTION_1KM
+RESOLUTION = RESOLUTION_36KM
 
 
 def main():
