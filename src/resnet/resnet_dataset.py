@@ -64,9 +64,10 @@ class ResNetInferenceDataset(CommonInferenceDataset):
         self.valid = ~np.isnan(self.xs).any(axis=-1)  # (H, W)
 
     def get_all(self):
-        x = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)
-        x = torch.from_numpy(x).permute(2, 0, 1)
-        return {"x": x, "valid": self.valid}
+        xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)
+        xs = torch.from_numpy(xs).permute(2, 0, 1)  # [H, W, 5] -> [5, H, W]
+
+        return xs
 
 
 class ResNetResultStore(TiffStore):
