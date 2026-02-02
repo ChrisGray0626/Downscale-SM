@@ -199,7 +199,7 @@ def write_tiff(data,
         dst.write(data)
 
 
-def show_tiff(file_path: str, dst_epsg_code: int = 4326):
+def show_tiff(file_path: str, dst_epsg_code: int = 4326, vmin: float = 0.0, vmax: float = 0.6):
     with rasterio.open(file_path) as dataset:
         # 读取数据（第1波段）
         data = dataset.read(1)
@@ -222,8 +222,7 @@ def show_tiff(file_path: str, dst_epsg_code: int = 4326):
     print("Bounds: ", bounds)
     print("Resolution (pixel size): ", res)
     print("Data shape: ", data.shape)
-    # 显示高程图像
-    plt.imshow(data, cmap='terrain')
+    plt.imshow(data, cmap='terrain', vmin=vmin, vmax=vmax)
     plt.colorbar()
     plt.xlabel("Column")
     plt.ylabel("Row")
