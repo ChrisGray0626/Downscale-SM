@@ -17,7 +17,7 @@ from resnet.resnet_model import load_checkpoint
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
-RESOLUTION = RESOLUTION_36KM
+RESOLUTION = RESOLUTION_1KM
 
 
 def main():

@@ -14,13 +14,14 @@ from model.module import build_device
 from resnet.resnet_dataset import ResNetTrainDataset
 from resnet.resnet_model import ResNet, save_checkpoint, DEFAULT_CONFIG
 
-EPOCHS = 64
+BATCH_SIZE = 1
+EPOCHS = 80
 
 
 def main():
     device = build_device()
     dataset = ResNetTrainDataset()
-    loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     model = ResNet(**DEFAULT_CONFIG).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
