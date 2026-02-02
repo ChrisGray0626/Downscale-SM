@@ -16,7 +16,7 @@ from mgwr.sel_bw import Sel_BW
 from constants import *
 from evaluation.evaluator import Evaluator
 from gwr.gwr_dataset import GWRTrainDataset
-from utils.util import suppress_linalg_in_worker
+from utils.util import suppress_linalg
 
 MAX_SAMPLE_BW = 30000
 
@@ -38,7 +38,7 @@ def main():
         spherical=True,
         n_jobs=-1,
     )
-    with joblib.parallel_backend("loky", initializer=suppress_linalg_in_worker, initargs=()):  # type: ignore[call-arg]
+    with joblib.parallel_backend("loky", initializer=suppress_linalg, initargs=()):  # type: ignore[call-arg]
         results = model.fit()
     pred_norm = results.predy
     pred = dataset.denorm_y(pred_norm.flatten())

@@ -30,8 +30,8 @@ def main():
     os.makedirs(dst_dir, exist_ok=True)
 
     for date in tqdm(get_valid_dates(), desc="Inference"):
-        inf_dataset = ResNetInferenceDataset(date, RESOLUTION)
-        xs = inf_dataset.get_all()
+        dataset = ResNetInferenceDataset(date, RESOLUTION)
+        xs = dataset.get_all()
         xs = xs.unsqueeze(0).to(device)
         with torch.no_grad():
             pred_y = model(xs).squeeze(0).squeeze(0).cpu().numpy()

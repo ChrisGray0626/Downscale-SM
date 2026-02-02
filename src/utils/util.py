@@ -72,5 +72,5 @@ def build_transform_from_lonlat(lons: np.ndarray, lats: np.ndarray) -> Affine:
     return transform
 
 
-def suppress_linalg_in_worker():
+def suppress_linalg():
     warnings.filterwarnings("ignore", category=scipy.linalg.LinAlgWarning)

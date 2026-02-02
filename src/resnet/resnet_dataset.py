@@ -17,11 +17,9 @@ MIN_VALID_RATIO = 0.5
 
 
 class ResNetTrainDataset(CommonTrainDataset):
-    """Only include dates with valid_ratio > MIN_VALID_RATIO."""
 
     def __init__(self):
-        super().__init__()
-
+        super().__init__(flat=False, filter_valid=False)
         # Filter by valid ratio
         n = len(self.dates)
         total = self.valid_masks[0].size
@@ -47,11 +45,14 @@ class ResNetTrainDataset(CommonTrainDataset):
 
 class ResNetInferenceDataset(CommonInferenceDataset):
 
+    def __init__(self, date: str, resolution: str):
+        super().__init__(date, resolution, flat=False, filter_valid=False)
+
     def _load_data(self):
         grid_info = self.grid_info_store.get()
         self.H, self.W = grid_info["H"], grid_info["W"]
         self.grid_info = grid_info
-        self.pos_flat = grid_info["pos"].reshape(-1, 2).astype(np.float64)
+        self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
         self.rows_full = grid_info["rows"].flatten()
         self.cols_full = grid_info["cols"].flatten()
         xs = np.stack(
@@ -59,9 +60,6 @@ class ResNetInferenceDataset(CommonInferenceDataset):
             axis=-1,
         )
         self.xs = xs.astype(np.float32)  # (H, W, 5)
-
-    def _filter_valid(self):
-        self.valid = ~np.isnan(self.xs).any(axis=-1)  # (H, W)
 
     def get_all(self):
         xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)

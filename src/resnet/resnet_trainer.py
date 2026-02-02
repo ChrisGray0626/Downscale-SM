@@ -14,7 +14,7 @@ from model.module import build_device
 from resnet.resnet_dataset import ResNetTrainDataset
 from resnet.resnet_model import ResNet, save_checkpoint, DEFAULT_CONFIG
 
-EPOCHS = 32
+EPOCHS = 64
 
 
 def main():

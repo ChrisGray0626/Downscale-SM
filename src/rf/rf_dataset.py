@@ -13,12 +13,18 @@ from utils.data_store import TiffStore
 
 class RFTrainDataset(CommonTrainDataset):
 
+    def __init__(self):
+        super().__init__(flat=True, filter_valid=True)
+
     def get_all(self):
         data = super().get_all()
         return data[X_NAME], data[Y_NAME]
 
 
 class RFInferenceDataset(CommonInferenceDataset):
+
+    def __init__(self, date: str, resolution: str):
+        super().__init__(date, resolution, flat=True, filter_valid=True)
 
     def get_all(self):
         data = super().get_all()
