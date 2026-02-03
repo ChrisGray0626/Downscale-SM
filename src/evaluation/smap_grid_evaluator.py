@@ -16,9 +16,9 @@ from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
     DDPM_NAME,
-    # RF_NAME,
-    # GWR_NAME,
-    # RESNET_NAME,
+    RF_NAME,
+    GWR_NAME,
+    RESNET_NAME,
 ]
 RESOLUTION = RESOLUTION_36KM
 

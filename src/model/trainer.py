@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from constants import *
 from model.ddpm_dataset import DDPMTrainDataset
-from model.module import EarlyStopping, NoisePredictorImage, build_device
+from model.module import EarlyStopping, NoisePredictor, build_device
 
 # Diffusion setting
 STEP_TOTAL_NUM = 1000
@@ -53,8 +53,8 @@ def main():
         generator=torch.Generator().manual_seed(42),
     )
 
-    model = NoisePredictorImage(
-        input_feature_num=INPUT_FEATURE_NUM,
+    model = NoisePredictor(
+        input_channel_num=INPUT_FEATURE_NUM,
         hidden_dim=HIDDEN_DIM,
         timestep_emb_dim=TIMESTEP_EMB_DIM,
         res_block_num=RES_BLOCK_NUM,
@@ -66,7 +66,7 @@ def main():
 
 
 class Trainer:
-    def __init__(self, model: NoisePredictorImage, train_dataset: Dataset, val_dataset: Dataset):
+    def __init__(self, model: NoisePredictor, train_dataset: Dataset, val_dataset: Dataset):
         self.model = model
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
@@ -82,7 +82,7 @@ class Trainer:
         total_loss = 0.0
         total_valid = 0
 
-        for batch_x, batch_y, batch_valid, batch_dates, batch_insitu_stats in data_loader:
+        for batch_dates, batch_x, batch_y, batch_valid, batch_insitu_stats in data_loader:
             batch_x = batch_x.to(self.device)
             batch_y = batch_y.to(self.device)
             batch_valid = batch_valid.to(self.device)
@@ -106,7 +106,7 @@ class Trainer:
 
             pred_noise = self.model.forward(
                 diffused_ys, batch_x, sampled_timesteps,
-                dates=list(batch_dates),
+                dates=batch_dates,
                 insitu_stats=batch_insitu_stats,
             )
 
@@ -178,7 +178,7 @@ def build_early_stopping() -> EarlyStopping:
 
 @torch.no_grad()
 def reverse_diffuse(
-        model: NoisePredictorImage,
+        model: NoisePredictor,
         scheduler: DDPMScheduler,
         xs: torch.Tensor,
         dates: List[str],

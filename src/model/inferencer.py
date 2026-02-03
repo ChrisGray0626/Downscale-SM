@@ -13,7 +13,7 @@ from tqdm import tqdm
 from constants import *
 from datasets.dataset import GridInfoStore
 from model.ddpm_dataset import DDPMInferenceDataset
-from model.module import NoisePredictorImage, build_device
+from model.module import NoisePredictor, build_device
 from model.trainer import build_scheduler, reverse_diffuse
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
@@ -50,8 +50,8 @@ def main():
         write_tiff(pred_y, dst_file_path, transform=grid_info["transform"], crs=grid_info["crs"])
 
 
-def build_model() -> NoisePredictorImage:
-    return NoisePredictorImage.from_pretrained(DDPM_MODEL_PATH)
+def build_model() -> NoisePredictor:
+    return NoisePredictor.from_pretrained(DDPM_MODEL_PATH)
 
 
 if __name__ == "__main__":

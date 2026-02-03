@@ -19,110 +19,71 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-from constants import RANGE
-
 
 class NoisePredictor(ModelMixin, ConfigMixin):
 
     @register_to_config
-    def __init__(self, input_feature_num: int,
-                 hidden_dim: int = 512, timestep_emb_dim: int = 128,
-                 res_block_num: int = 3):
+    def __init__(
+            self,
+            input_channel_num: int = 5,
+            output_channel_num: int = 1,
+            hidden_dim: int = 512,
+            timestep_emb_dim: int = 128,
+            res_block_num: int = 3,
+            channel_attention_reduction: int = 16,
+    ):
         super().__init__()
-        self.input_feature_num = input_feature_num
-        self.hidden_dim = hidden_dim
 
-        input_dim = input_feature_num + 1
-        self.input_layer = nn.Linear(input_dim, hidden_dim)
+        self.input_layer = nn.Sequential(
+            nn.Conv2d(input_channel_num + output_channel_num, hidden_dim, kernel_size=3, padding=1),
+            nn.GroupNorm(min(8, hidden_dim), hidden_dim),
+            nn.SiLU(),
+        )
 
-        # Timestep Embedding
         self.timestep_embedding = nn.Sequential(
             SinusoidalPosEmb(timestep_emb_dim),
             nn.Linear(timestep_emb_dim, timestep_emb_dim * 4),
             nn.SiLU(),
-            nn.Linear(timestep_emb_dim * 4, timestep_emb_dim * 4),
+            nn.Linear(timestep_emb_dim * 4, hidden_dim),
         )
-        self.emb_timestep2hidden = nn.Linear(timestep_emb_dim * 4, hidden_dim)
-
-        # Time Embedding
-        self.time_embedding = TimeEmbedding(
-            hidden_dim=hidden_dim,
-            num_fourier=8
-        )
-
-        # Spatial Embedding
-        lon_min, lat_min, lon_max, lat_max = RANGE
-        self.spatial_embedding = SpatialEmbedding(
-            hidden_dim=hidden_dim,
-            num_fourier=6,
-            lon_min=lon_min,
-            lon_max=lon_max,
-            lat_min=lat_min,
-            lat_max=lat_max
-        )
-
-        # Insitu Stats Embedding
-        self.insitu_stats_embedding = InsituStatsEmbedding(
-            hidden_dim=hidden_dim,
-            stats_dim=4
-        )
-
-        # Condition Fusion
+        self.time_embedding = TimeEmbedding(hidden_dim=hidden_dim, num_fourier=8)
+        self.insitu_stats_embedding = InsituStatsEmbedding(hidden_dim=hidden_dim, stats_dim=4)
         self.condition_fusion = nn.Sequential(
-            nn.Linear(hidden_dim * 4, hidden_dim * 2),
+            nn.Linear(hidden_dim * 3, hidden_dim * 2),
             nn.SiLU(),
-            nn.Linear(hidden_dim * 2, hidden_dim)
+            nn.Linear(hidden_dim * 2, hidden_dim),
         )
 
-        # Residual Block
-        self.res_blocks = nn.ModuleList([
-            FiLMResBlock(hidden_dim=hidden_dim)
+        self.net = nn.ModuleList([
+            FiLMResBlock2D(hidden_dim, hidden_dim, channel_attention_reduction=channel_attention_reduction)
             for _ in range(res_block_num)
         ])
+        self.head = nn.Conv2d(hidden_dim, output_channel_num, kernel_size=3, padding=1)
 
-        # Output Layer
-        self.output_layer = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.SiLU(),
-            nn.Linear(hidden_dim // 2, 1)
-        )
+    def forward(
+            self,
+            diffused_ys: torch.Tensor,
+            xs: torch.Tensor,
+            timesteps: torch.Tensor,
+            dates: List[str],
+            insitu_stats: torch.Tensor,
+    ) -> torch.Tensor:
+        x = torch.cat([xs, diffused_ys], dim=1)
+        x = self.input_layer(x)
 
-    def forward(self, diffused_ys: torch.Tensor, xs: torch.Tensor, timesteps: torch.Tensor,
-                pos: torch.Tensor, dates: List[str],
-                insitu_stats: torch.Tensor) -> torch.Tensor:
-        inputs = torch.cat([xs, diffused_ys], dim=1)
-        x = self.input_layer(inputs)
-
-        # Embed Timestep
-        embed_timesteps = self.timestep_embedding(timesteps)
-        embed_timesteps = self.emb_timestep2hidden(embed_timesteps)
-
-        # Embed Time
+        embed_timestep = self.timestep_embedding(timesteps)
         embed_time = self.time_embedding(dates)
-
-        # Embed Spatial
-        embed_spatial = self.spatial_embedding(pos)
-
-        # Embed Insitu Stats
         embed_insitu_stats = self.insitu_stats_embedding(insitu_stats)
-
-        # Fuse Condition
-        condition = torch.cat([embed_timesteps, embed_time, embed_spatial, embed_insitu_stats], dim=1)
+        condition = torch.cat([embed_timestep, embed_time, embed_insitu_stats], dim=1)
         condition = self.condition_fusion(condition)
 
-        # Residual Blocks with FiLM
-        for res_block in self.res_blocks:
-            x = res_block(x, condition)
+        for layer in self.net:
+            x = layer(x, condition)
 
-        out = self.output_layer(x)
-
-        return out
+        return self.head(x)
 
 
 class ChannelAttention(nn.Module):
-    """Avg + Max pool -> shared MLP -> sigmoid -> scale. [B, C, H, W] -> [B, C, H, W]."""
 
     def __init__(self, dim: int, reduction: int = 16):
         super().__init__()
@@ -149,107 +110,51 @@ class ChannelAttention(nn.Module):
 
 
 class FiLMResBlock2D(nn.Module):
-    """2D Conv residual block with FiLM conditioning (scale/shift from global condition)."""
+    """x + CA(net(film(x, condition))). Channel attention on residual branch (SE-ResNet style)."""
 
-    def __init__(self, channels: int, condition_dim: int):
+    def __init__(self, channels: int, condition_dim: int, channel_attention_reduction: int = 16):
         super().__init__()
-        self.proj_cond = nn.Linear(condition_dim, channels * 2)
-        self.norm1 = nn.GroupNorm(min(8, channels), channels)
-        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
-        self.norm2 = nn.GroupNorm(min(8, channels), channels)
-        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.film = FiLM(condition_dim, out_channels=channels)
+        self.net = nn.Sequential(
+            nn.GroupNorm(min(8, channels), channels),
+            nn.SiLU(),
+            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.GroupNorm(min(8, channels), channels),
+            nn.SiLU(),
+            nn.Conv2d(channels, channels, 3, padding=1),
+        )
+        self.channel_attn = ChannelAttention(dim=channels, reduction=channel_attention_reduction)
 
     def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        B, C, H, W = x.shape
-        scale_shift = self.proj_cond(condition)
-        scale, shift = scale_shift.chunk(2, dim=1)
-        scale = scale.reshape(B, C, 1, 1)
-        shift = shift.reshape(B, C, 1, 1)
-        h = self.norm1(x)
-        h = scale * h + shift
-        h = F.silu(h)
-        h = self.conv1(h)
-        h = self.norm2(h)
-        h = F.silu(h)
-        h = self.conv2(h)
-        return x + h
+        branch = self.net(self.film(x, condition))
+        branch = self.channel_attn(branch)
+        return x + branch
 
 
-class NoisePredictorImage(ModelMixin, ConfigMixin):
-    """DDPM noise predictor for full image: (B, 1, H, W) + (B, 5, H, W) -> (B, 1, H, W).
-    Architecture: stem -> [ChannelAttention -> ResBlock -> ChannelAttention] x N -> Conv2d."""
+class FiLM(nn.Module):
 
-    @register_to_config
-    def __init__(
-            self,
-            input_feature_num: int = 5,
-            hidden_dim: int = 128,
-            timestep_emb_dim: int = 128,
-            res_block_num: int = 3,
-            channel_attention_reduction: int = 16,
-            base_channels: int = None,
-            channels: int = None,
-            use_channel_attention: bool = None,
-    ):
+    def __init__(self, condition_dim: int, out_channels: int = None):
         super().__init__()
-        unified = hidden_dim or channels or 128
-        base_channels = base_channels if base_channels is not None else unified
-        hidden_dim = unified
-
-        self.input_feature_num = input_feature_num
-        in_channels = input_feature_num + 1
-
-        self.stem = nn.Sequential(
-            nn.Conv2d(in_channels, base_channels, kernel_size=3, padding=1),
-            nn.GroupNorm(min(8, base_channels), base_channels),
+        self.out_channels = out_channels or condition_dim
+        self.scale_net = nn.Sequential(
+            nn.Linear(condition_dim, self.out_channels),
             nn.SiLU(),
+            nn.Linear(self.out_channels, self.out_channels),
+        )
+        self.shift_net = nn.Sequential(
+            nn.Linear(condition_dim, self.out_channels),
+            nn.SiLU(),
+            nn.Linear(self.out_channels, self.out_channels),
         )
 
-        self.timestep_embedding = nn.Sequential(
-            SinusoidalPosEmb(timestep_emb_dim),
-            nn.Linear(timestep_emb_dim, timestep_emb_dim * 4),
-            nn.SiLU(),
-            nn.Linear(timestep_emb_dim * 4, hidden_dim),
-        )
-        self.time_embedding = TimeEmbedding(hidden_dim=hidden_dim, num_fourier=8)
-        self.insitu_stats_embedding = InsituStatsEmbedding(hidden_dim=hidden_dim, stats_dim=4)
-        self.condition_fusion = nn.Sequential(
-            nn.Linear(hidden_dim * 3, hidden_dim * 2),
-            nn.SiLU(),
-            nn.Linear(hidden_dim * 2, hidden_dim),
-        )
-
-        self.net = nn.ModuleList()
-        for _ in range(res_block_num):
-            self.net.append(ChannelAttention(dim=base_channels, reduction=channel_attention_reduction))
-            self.net.append(FiLMResBlock2D(base_channels, hidden_dim))
-            self.net.append(ChannelAttention(dim=base_channels, reduction=channel_attention_reduction))
-        self.head = nn.Conv2d(base_channels, 1, kernel_size=3, padding=1)
-
-    def forward(
-            self,
-            diffused_ys: torch.Tensor,
-            xs: torch.Tensor,
-            timesteps: torch.Tensor,
-            dates: List[str],
-            insitu_stats: torch.Tensor,
-    ) -> torch.Tensor:
-        x = torch.cat([xs, diffused_ys], dim=1)
-        x = self.stem(x)
-
-        embed_t = self.timestep_embedding(timesteps)
-        embed_time = self.time_embedding(dates)
-        embed_insitu = self.insitu_stats_embedding(insitu_stats)
-        condition = torch.cat([embed_t, embed_time, embed_insitu], dim=1)
-        condition = self.condition_fusion(condition)
-
-        for i, m in enumerate(self.net):
-            if isinstance(m, FiLMResBlock2D):
-                x = m(x, condition)
-            else:
-                x = m(x)
-
-        return self.head(x)
+    def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
+        scale = self.scale_net(condition)
+        shift = self.shift_net(condition)
+        if x.dim() == 4:
+            B = x.shape[0]
+            scale = scale.view(B, -1, 1, 1)
+            shift = shift.view(B, -1, 1, 1)
+        return scale * x + shift
 
 
 class SinusoidalPosEmb(nn.Module):
@@ -375,53 +280,6 @@ class InsituStatsEmbedding(nn.Module):
 
     def forward(self, insitu_stats: torch.Tensor) -> torch.Tensor:
         return self.proj(insitu_stats)
-
-
-class FiLMResBlock(nn.Module):
-
-    def __init__(self, hidden_dim: int):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.film = FiLM(hidden_dim)
-        self.net = nn.Sequential(
-            nn.LayerNorm(hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-        )
-
-    def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        x_modulated = self.film(x, condition)
-        out = x + self.net(x_modulated)
-
-        return out
-
-
-class FiLM(nn.Module):
-
-    def __init__(self, hidden_dim: int):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-
-        self.scale_net = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim)
-        )
-        self.shift_net = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim)
-        )
-
-    def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        scale = self.scale_net(condition)
-        shift = self.shift_net(condition)
-        out = scale * x + shift
-
-        return out
 
 
 class BiasCorrector:

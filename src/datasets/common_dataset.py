@@ -62,10 +62,7 @@ class CommonTrainDataset(Dataset):
 
         xs_list, ys_list = [], []
         for date in dates:
-            xs_date = np.stack(
-                [self.data_store.get(name, date) for name in FEATURE_NAMES],
-                axis=-1,
-            )
+            xs_date = np.stack([self.data_store.get(name, date) for name in FEATURE_NAMES], axis=-1, )
             ys_date = self.data_store.get(SM_NAME, date)
             xs_list.append(xs_date)
             ys_list.append(ys_date)
@@ -93,17 +90,17 @@ class CommonTrainDataset(Dataset):
         self.ys = (self.ys - self.y_mean) / self.y_std
 
     def _stage_flat(self):
-        dates_arr = self.dates
+        dates = self.dates
         pos_1d = self.pos.reshape(-1, 2)
         rows_1d = self.rows.reshape(-1)
         cols_1d = self.cols.reshape(-1)
         x_list, y_list, pos_list, date_list, rows_list, cols_list = [], [], [], [], [], []
-        for i in range(len(dates_arr)):
+        for i in range(len(dates)):
             n = self.H * self.W
             x_list.append(self.xs[i].reshape(n, -1).astype(np.float64))
             y_list.append(self.ys[i].reshape(-1))
             pos_list.append(pos_1d)
-            date_list.append(np.full(n, dates_arr[i], dtype=object))
+            date_list.append(np.full(n, dates[i], dtype=object))
             rows_list.append(rows_1d)
             cols_list.append(cols_1d)
         self.xs = np.concatenate(x_list, axis=0)

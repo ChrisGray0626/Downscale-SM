@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-DDPM image-level datasets: full (H, W) per date, like ResNet.
-Returns (x, y, valid, date, insitu_stats) for train; get_all() for inference.
+@Description DDPM dataset
 @Author Chris
 @Date 2026
 """
 import numpy as np
 import torch
 
-from datasets.common_dataset import CommonInferenceDataset, CommonTrainDataset, FEATURE_NAMES
+from datasets.common_dataset import CommonInferenceDataset, CommonTrainDataset
 from datasets.dataset import InsituStatsStore
 
 MIN_VALID_RATIO = 0.5
 
 
 class DDPMTrainDataset(CommonTrainDataset):
-    """Image-based train dataset: one sample = one date, (5, H, W) x, (1, H, W) y, valid mask, insitu_stats."""
 
     def __init__(self):
         super().__init__(flat=False, filter_valid=False)
@@ -37,10 +35,10 @@ class DDPMTrainDataset(CommonTrainDataset):
 
     def __getitem__(self, idx: int):
         real_idx = self._valid_indices[idx]
+        date = str(self.dates[real_idx])
         x = self.xs[real_idx]
         y = self.ys[real_idx]
         valid = self.valid_masks[real_idx]
-        date = str(self.dates[real_idx])
         insitu_stats = self._insitu_stats_list[idx].astype(np.float32)
 
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
@@ -48,29 +46,28 @@ class DDPMTrainDataset(CommonTrainDataset):
         y = torch.from_numpy(np.nan_to_num(y, nan=0.0).astype(np.float32)).unsqueeze(0)
         valid = torch.from_numpy(valid.astype(np.float32)).unsqueeze(0)
         insitu_stats = torch.from_numpy(insitu_stats)
-        return x, y, valid, date, insitu_stats
+        return date, x, y, valid, insitu_stats
 
 
 class DDPMInferenceDataset(CommonInferenceDataset):
-    """Image-based inference dataset: one date, get_all() returns (xs, date, insitu_stats)."""
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=False, filter_valid=False)
         self.insitu_stats_store = InsituStatsStore(resolution=resolution)
         self.insitu_stats = self.insitu_stats_store.get(date).astype(np.float32)
 
-    def _load_data(self):
-        grid_info = self.grid_info_store.get()
-        self.H, self.W = grid_info["H"], grid_info["W"]
-        self.grid_info = grid_info
-        self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
-        self.rows_full = grid_info["rows"].flatten()
-        self.cols_full = grid_info["cols"].flatten()
-        xs = np.stack(
-            [self.data_store.get(name, self.date) for name in FEATURE_NAMES],
-            axis=-1,
-        )
-        self.xs = xs.astype(np.float32)
+    # def _load_data(self):
+    #     grid_info = self.grid_info_store.get()
+    #     self.H, self.W = grid_info["H"], grid_info["W"]
+    #     self.grid_info = grid_info
+    #     self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
+    #     self.rows_full = grid_info["rows"].flatten()
+    #     self.cols_full = grid_info["cols"].flatten()
+    #     xs = np.stack(
+    #         [self.data_store.get(name, self.date) for name in FEATURE_NAMES],
+    #         axis=-1,
+    #     )
+    #     self.xs = xs.astype(np.float32)
 
     def get_all(self):
         xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)
