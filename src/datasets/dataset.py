@@ -416,6 +416,13 @@ class DEMStore(BaseDataStore[np.ndarray]):
         return read_tiff_data(file_path).astype(np.float32)
 
 
+class SMAPStore(TiffStore):
+
+    def __init__(self, resolution: str):
+        base_dir = os.path.join(PROCESSED_DIR_PATH, SM_NAME)
+        super().__init__(base_dir, resolution)
+
+
 # TODO InsituStore implementation
 class InsituStore(TiffStore):
     def __init__(self, resolution: str):

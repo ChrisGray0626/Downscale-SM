@@ -5,11 +5,17 @@
   @Author Chris
   @Date 2026/2/2
 """
-import resnet.resnet_inferencer
+import model.corrector
+import model.inferencer
+import model.trainer
+
+N = 1
 
 
 def main():
-    resnet.resnet_inferencer.main()
+    for _ in range(N):
+        model.inferencer.main()
+        model.corrector.main()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 """
 import math
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
 
@@ -31,6 +31,7 @@ class NoisePredictor(ModelMixin, ConfigMixin):
             timestep_emb_dim: int = 128,
             res_block_num: int = 3,
             channel_attention_reduction: int = 16,
+            dropout_p: float = 0.1,
     ):
         super().__init__()
 
@@ -51,11 +52,17 @@ class NoisePredictor(ModelMixin, ConfigMixin):
         self.condition_fusion = nn.Sequential(
             nn.Linear(hidden_dim * 3, hidden_dim * 2),
             nn.SiLU(),
+            nn.Dropout(p=dropout_p),
             nn.Linear(hidden_dim * 2, hidden_dim),
         )
 
         self.net = nn.ModuleList([
-            FiLMResBlock2D(hidden_dim, hidden_dim, channel_attention_reduction=channel_attention_reduction)
+            FiLMResBlock2D(
+                hidden_dim,
+                hidden_dim,
+                channel_attention_reduction=channel_attention_reduction,
+                dropout_p=dropout_p,
+            )
             for _ in range(res_block_num)
         ])
         self.head = nn.Conv2d(hidden_dim, output_channel_num, kernel_size=3, padding=1)
@@ -66,7 +73,7 @@ class NoisePredictor(ModelMixin, ConfigMixin):
             xs: torch.Tensor,
             timesteps: torch.Tensor,
             dates: List[str],
-            insitu_stats: torch.Tensor,
+            insitu_stats: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         x = torch.cat([xs, diffused_ys], dim=1)
         x = self.input_layer(x)
@@ -110,17 +117,24 @@ class ChannelAttention(nn.Module):
 
 
 class FiLMResBlock2D(nn.Module):
-    """x + CA(net(film(x, condition))). Channel attention on residual branch (SE-ResNet style)."""
 
-    def __init__(self, channels: int, condition_dim: int, channel_attention_reduction: int = 16):
+    def __init__(
+            self,
+            channels: int,
+            condition_dim: int,
+            channel_attention_reduction: int = 16,
+            dropout_p: float = 0.1,
+    ):
         super().__init__()
         self.film = FiLM(condition_dim, out_channels=channels)
         self.net = nn.Sequential(
             nn.GroupNorm(min(8, channels), channels),
             nn.SiLU(),
+            nn.Dropout2d(p=dropout_p),
             nn.Conv2d(channels, channels, 3, padding=1),
             nn.GroupNorm(min(8, channels), channels),
             nn.SiLU(),
+            nn.Dropout2d(p=dropout_p),
             nn.Conv2d(channels, channels, 3, padding=1),
         )
         self.channel_attn = ChannelAttention(dim=channels, reduction=channel_attention_reduction)
@@ -318,11 +332,13 @@ class BiasCorrector:
             y_pred_val = self.model.predict(x_val)
             mse = mean_squared_error(y_val, y_pred_val)
             rmse = np.sqrt(mse)
-            r2 = r2_score(y_val, y_pred_val)
+            r = np.nan
+            if np.std(y_val) > 1e-12 and np.std(y_pred_val) > 1e-12:
+                r = float(np.corrcoef(y_val, y_pred_val)[0, 1])
 
             print(f"RF Bias Corrector Training:")
             print(f"  Training samples: {len(x_train):,}, Validation samples: {len(x_val):,}")
-            print(f"  Validation RMSE: {rmse:.6f}, R2: {r2:.4f}")
+            print(f"  Validation RMSE: {rmse:.6f}, R: {r:.4f}")
             if hasattr(self.model, 'oob_score_') and self.model.oob_score_ is not None:
                 print(f"  OOB Score: {self.model.oob_score_:.4f}")
 
@@ -378,3 +394,4 @@ class EarlyStopping:
                 model.load_state_dict(self.best_weights)
             return True
         return False
+

@@ -5,8 +5,8 @@
   @Author Chris
   @Date 2026/1/27
 """
-from constants import ESA_CCI_NAME, RF_NAME, DDPM_NAME, GWR_NAME, RESNET_NAME
-from datasets.dataset import CorrectionResultStore, InferenceResultStore
+from constants import ESA_CCI_NAME, RF_NAME, DDPM_NAME, GWR_NAME, RESNET_NAME, SM_NAME, IN_SITU_NAME
+from datasets.dataset import CorrectionResultStore, InferenceResultStore, SMAPStore, InsituStore
 from esa_cci.esa_cci_dataset import ESACCIStore
 from gwr.gwr_dataset import GWRResultStore
 from resnet.resnet_dataset import ResNetResultStore
@@ -22,6 +22,10 @@ def build_pred_store(product_name, resolution, is_correction=False):
         return GWRResultStore(resolution=resolution)
     elif product_name == RESNET_NAME:
         return ResNetResultStore(resolution=resolution)
+    elif product_name == SM_NAME:
+        return SMAPStore(resolution=resolution)
+    elif product_name == IN_SITU_NAME:
+        return InsituStore(resolution=resolution)
     elif product_name == DDPM_NAME:
         if is_correction:
             return CorrectionResultStore(resolution=resolution)

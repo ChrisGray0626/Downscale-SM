@@ -44,7 +44,7 @@ def main():
     y_all_denorm = dataset.denorm_y(ys)
     metrics = Evaluator.calc_metrics(pred_all, y_all_denorm)
     print(f"  ubRMSE: {metrics['ubRMSE']:.6f}")
-    print(f"  R²:     {metrics['R2']:.6f}")
+    print(f"  R:      {metrics['R']:.6f}")
     print(f"  Bias:   {metrics['Bias']:.6f}")
     print(f"  Slope:  {metrics['Slope']:.6f}")
 

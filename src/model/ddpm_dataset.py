@@ -11,7 +11,7 @@ import torch
 from datasets.common_dataset import CommonInferenceDataset, CommonTrainDataset
 from datasets.dataset import InsituStatsStore
 
-MIN_VALID_RATIO = 0.5
+MIN_VALID_RATIO = 0.2
 
 
 class DDPMTrainDataset(CommonTrainDataset):
@@ -55,19 +55,6 @@ class DDPMInferenceDataset(CommonInferenceDataset):
         super().__init__(date, resolution, flat=False, filter_valid=False)
         self.insitu_stats_store = InsituStatsStore(resolution=resolution)
         self.insitu_stats = self.insitu_stats_store.get(date).astype(np.float32)
-
-    # def _load_data(self):
-    #     grid_info = self.grid_info_store.get()
-    #     self.H, self.W = grid_info["H"], grid_info["W"]
-    #     self.grid_info = grid_info
-    #     self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
-    #     self.rows_full = grid_info["rows"].flatten()
-    #     self.cols_full = grid_info["cols"].flatten()
-    #     xs = np.stack(
-    #         [self.data_store.get(name, self.date) for name in FEATURE_NAMES],
-    #         axis=-1,
-    #     )
-    #     self.xs = xs.astype(np.float32)
 
     def get_all(self):
         xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)

@@ -26,7 +26,7 @@ class Evaluator:
         df = pd.DataFrame(data)
         df_result = pd.DataFrame(
             df.groupby('Date').apply(self._calc_metrics_by_date, include_groups=False).dropna().tolist())
-        df_result = df_result.sort_values('Corr_R2', ascending=False, na_position='last')
+        df_result = df_result.sort_values('Corr_R', ascending=False, na_position='last')
         return df_result
 
     def _calc_metrics_by_date(self, group):
@@ -76,7 +76,7 @@ class Evaluator:
         results = df_valid.groupby(['Row', 'Col']).apply(self._calc_metrics_by_site,
                                                          include_groups=False).dropna()
         df_result = pd.DataFrame(list(results))
-        df_result = df_result.sort_values('Corr_R2', ascending=False, na_position='last')
+        df_result = df_result.sort_values('Corr_R', ascending=False, na_position='last')
         return df_result
 
     def _calc_metrics_by_site(self, group):
@@ -159,7 +159,7 @@ class Evaluator:
         return {
             'ubRMSE': Evaluator.ubrmse(pred, true, mask),
             'Bias': Evaluator.bias(pred, true, mask),
-            'R2': Evaluator.r2(pred, true, mask),
+            'R': Evaluator.r(pred, true, mask),
             'Slope': Evaluator.slope(pred, true, mask),
         }
 
@@ -168,7 +168,7 @@ class Evaluator:
         rows = df_site_results['Row'].values
         cols = df_site_results['Col'].values
         error_values = df_site_results['Corr_ubRMSE'].values
-        r2_values = df_site_results['Corr_R2'].values
+        r_values = df_site_results['Corr_R'].values
 
         n_points = len(rows)
         use_scatter = n_points < height * width * 0.01
@@ -183,13 +183,13 @@ class Evaluator:
             ax1.set_aspect('equal', adjustable='box')
             plt.colorbar(scatter1, ax=ax1, label='ubRMSE')
 
-            scatter2 = ax2.scatter(cols, rows, c=r2_values, cmap='cividis', s=50, edgecolors='black', linewidths=0.5,
-                                   vmin=0, vmax=1)
-            ax2.set_title('R² Score (Pred vs InSitu)')
+            scatter2 = ax2.scatter(cols, rows, c=r_values, cmap='cividis', s=50, edgecolors='black', linewidths=0.5,
+                                   vmin=-1, vmax=1)
+            ax2.set_title('R (Pred vs InSitu)')
             ax2.set_xlabel('Column Index')
             ax2.set_ylabel('Row Index')
             ax2.set_aspect('equal', adjustable='box')
-            plt.colorbar(scatter2, ax=ax2, label='R²')
+            plt.colorbar(scatter2, ax=ax2, label='R')
         else:
             error_grid = self._build_metric_grid(error_values, rows, cols, height, width)
             im1 = ax1.imshow(error_grid, cmap='YlOrRd', aspect='auto', origin='upper')
@@ -198,12 +198,12 @@ class Evaluator:
             ax1.set_ylabel('Row Index')
             plt.colorbar(im1, ax=ax1, label='ubRMSE')
 
-            r2_grid = self._build_metric_grid(r2_values, rows, cols, height, width)
-            im2 = ax2.imshow(r2_grid, cmap='cividis', aspect='auto', origin='upper', vmin=0, vmax=1)
-            ax2.set_title('R² Score (Pred vs InSitu)')
+            r_grid = self._build_metric_grid(r_values, rows, cols, height, width)
+            im2 = ax2.imshow(r_grid, cmap='cividis', aspect='auto', origin='upper', vmin=-1, vmax=1)
+            ax2.set_title('R (Pred vs InSitu)')
             ax2.set_xlabel('Column Index')
             ax2.set_ylabel('Row Index')
-            plt.colorbar(im2, ax=ax2, label='R²')
+            plt.colorbar(im2, ax=ax2, label='R')
 
         plt.tight_layout()
         plt.show()
@@ -258,6 +258,6 @@ class Evaluator:
         print(f"  RMSE:      {metrics['RMSE']:.6f}")
         print(f"  ubRMSE:    {metrics['ubRMSE']:.6f}")
         print(f"  Bias:      {metrics['Bias']:.6f}")
-        print(f"  R²:        {metrics['R2']:.4f}")
+        print(f"  R:         {metrics['R']:.4f}")
         print(f"  Slope:     {metrics['Slope']:.4f}")
         print(f"{'=' * 60}")
