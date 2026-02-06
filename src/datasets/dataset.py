@@ -365,7 +365,7 @@ class InsituStatsStore(BaseDataStore[np.ndarray]):
 class InferenceResultStore(TiffStore):
 
     def __init__(self, resolution: str):
-        base_dir = INFERENCE_DIR_PATH
+        base_dir = DDPM_IMAGE_INFERENCE_DIR_PATH
         super().__init__(base_dir, resolution)
 
 
@@ -433,7 +433,7 @@ class InsituStore(TiffStore):
 class DDPMPixelInferenceStore(TiffStore):
 
     def __init__(self, resolution: str):
-        base_dir = PIXEL_INFERENCE_DIR_PATH
+        base_dir = DDPM_PIXEL_INFERENCE_DIR_PATH
         super().__init__(base_dir, resolution)
 
 

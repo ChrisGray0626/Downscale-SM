@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description DDPM-Based Soil Moisture Downscaling Trainer
+  @Description DDPM_Image-Based Soil Moisture Downscaling Trainer
   @Author Chris
   @Date 2025/11/12
 """
@@ -13,8 +13,9 @@ from diffusers import DDPMScheduler
 from torch.utils.data import DataLoader, Dataset
 
 from constants import *
-from model.ddpm_dataset import DDPMTrainDataset
-from model.module import EarlyStopping, NoisePredictorImage, build_device
+from ddpm_common.module import EarlyStopping, build_device
+from ddpm_image.image_dataset import DDPMImageTrainDataset
+from ddpm_image.image_module import ImageNoisePredictor
 
 # Diffusion setting
 STEP_TOTAL_NUM = 1000
@@ -100,7 +101,7 @@ def _variance_consistency_loss(
 ) -> torch.Tensor:
     """
     Variance consistency on valid pixels (per-sample): encourage Var(pred_x0) ~= Var(target_x0).
-    This directly targets the common issue slope < 1 (variance shrinkage).
+    This directly targets the ddpm_common issue slope < 1 (variance shrinkage).
     """
     B = pred_x0.shape[0]
     pred_flat = pred_x0.reshape(B, -1)
@@ -155,7 +156,7 @@ def combined_loss(
 
 
 def main():
-    dataset = DDPMTrainDataset()
+    dataset = DDPMImageTrainDataset()
     train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(
@@ -163,7 +164,7 @@ def main():
         generator=torch.Generator().manual_seed(42),
     )
 
-    model = NoisePredictorImage(
+    model = ImageNoisePredictor(
         input_channel_num=INPUT_FEATURE_NUM,
         hidden_dim=HIDDEN_DIM,
         timestep_emb_dim=TIMESTEP_EMB_DIM,
@@ -172,11 +173,11 @@ def main():
 
     trainer = Trainer(model, train_dataset, val_dataset)
     model = trainer.run()
-    model.save_pretrained(DDPM_MODEL_PATH)
+    model.save_pretrained(DDPM_IMAGE_MODEL_PATH)
 
 
 class Trainer:
-    def __init__(self, model: NoisePredictorImage, train_dataset: Dataset, val_dataset: Dataset):
+    def __init__(self, model: ImageNoisePredictor, train_dataset: Dataset, val_dataset: Dataset):
         self.model = model
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
@@ -214,7 +215,7 @@ class Trainer:
                 timesteps=sampled_timesteps,  # type: ignore
             )
 
-            # x0-prediction: model predicts clean sample x0 ≈ batch_y
+            # x0-prediction: ddpm_image predicts clean sample x0 ≈ batch_y
             pred_x0 = self.model.forward(
                 diffused_ys, batch_x, sampled_timesteps,
                 dates=batch_dates,
@@ -281,7 +282,7 @@ def build_scheduler() -> DDPMScheduler:
         beta_start=BETA_START,
         beta_end=BETA_END,
         beta_schedule="linear",
-        # x0-prediction mode: model outputs x0, not noise epsilon
+        # x0-prediction mode: ddpm_image outputs x0, not noise epsilon
         prediction_type="sample",
         clip_sample=False,
     )
@@ -297,7 +298,7 @@ def build_early_stopping() -> EarlyStopping:
 
 @torch.no_grad()
 def reverse_diffuse(
-        model: NoisePredictorImage,
+        model: ImageNoisePredictor,
         scheduler: DDPMScheduler,
         xs: torch.Tensor,
         dates: List[str],
@@ -314,7 +315,7 @@ def reverse_diffuse(
 
     for timestep in scheduler.timesteps:
         timesteps = torch.full((B,), timestep.item(), device=device, dtype=torch.long)
-        # x0-prediction: model outputs x0, scheduler.step expects x0 when prediction_type='sample'
+        # x0-prediction: ddpm_image outputs x0, scheduler.step expects x0 when prediction_type='sample'
         pred_x0 = model.forward(ys, xs, timesteps, dates=dates, insitu_stats=insitu_stats)
         step_out = scheduler.step(model_output=pred_x0, timestep=timestep, sample=ys)
         ys = step_out.prev_sample

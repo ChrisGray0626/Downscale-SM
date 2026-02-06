@@ -12,7 +12,8 @@ from torch.utils.data import Dataset, DataLoader
 
 from constants import *
 from datasets.dataset import TrainDataset, InsituStatsStore
-from model.module import NoisePredictorPixel, EarlyStopping, build_device
+from ddpm_common.module import build_device, EarlyStopping
+from ddpm_pixel.pixel_module import PixelNoisePredictor
 
 # Dataset setting
 INPUT_FEATURE_NUM = 5
@@ -46,7 +47,7 @@ def main():
         generator=torch.Generator().manual_seed(42)
     )
 
-    model = NoisePredictorPixel(
+    model = PixelNoisePredictor(
         input_feature_num=INPUT_FEATURE_NUM,
         hidden_dim=HIDDEN_DIM,
         timestep_emb_dim=TIMESTEP_EMB_DIM,
@@ -61,7 +62,7 @@ def main():
 
 class Trainer:
 
-    def __init__(self, model: NoisePredictorPixel,
+    def __init__(self, model: PixelNoisePredictor,
                  train_dataset: Dataset, val_dataset: Dataset, insitu_stats_store: InsituStatsStore):
         self.model = model
         self.train_dataset = train_dataset
@@ -172,7 +173,7 @@ def build_scheduler() -> DDPMScheduler:
         beta_start=BETA_START,
         beta_end=BETA_END,
         beta_schedule="linear",
-        prediction_type="sample",  # x0-prediction, aligned with image DDPM
+        prediction_type="sample",
         clip_sample=False,
     )
 

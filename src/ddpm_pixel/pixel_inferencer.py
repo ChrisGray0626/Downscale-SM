@@ -10,13 +10,14 @@ from typing import List
 import numpy as np
 import torch
 from diffusers import DDPMScheduler
-from model.pixel_trainer import build_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import InferenceDataset, GridInfoStore
-from model.module import NoisePredictorPixel, build_device
+from ddpm_common.module import build_device
+from ddpm_pixel.pixel_module import PixelNoisePredictor
+from ddpm_pixel.pixel_trainer import build_scheduler
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -34,7 +35,7 @@ def main():
     print(f"Device: {device}")
     model = build_model()
     grid_info = GridInfoStore(RESOLUTION).get()
-    dst_dir_path = os.path.join(PIXEL_INFERENCE_DIR_PATH, RESOLUTION)
+    dst_dir_path = os.path.join(DDPM_PIXEL_INFERENCE_DIR_PATH, RESOLUTION)
     os.makedirs(dst_dir_path, exist_ok=True)
 
     dates = get_valid_dates()
@@ -54,14 +55,14 @@ def main():
         write_tiff(pred_map, dst_file_path, transform=grid_info["transform"], crs=grid_info["crs"])
 
 
-def build_model() -> NoisePredictorPixel:
-    model = NoisePredictorPixel.from_pretrained(DDPM_PIXEL_MODEL_PATH)
+def build_model() -> PixelNoisePredictor:
+    model = PixelNoisePredictor.from_pretrained(DDPM_PIXEL_MODEL_PATH)
 
     return model
 
 
 @torch.no_grad()
-def inference(model: NoisePredictorPixel, dataset: InferenceDataset, device: str) -> np.ndarray:
+def inference(model: PixelNoisePredictor, dataset: InferenceDataset, device: str) -> np.ndarray:
     model = model.to(device)
     scheduler = build_scheduler()
     model.eval()
@@ -87,7 +88,7 @@ def inference(model: NoisePredictorPixel, dataset: InferenceDataset, device: str
 
 
 @torch.no_grad()
-def reverse_diffuse(model: NoisePredictorPixel, scheduler: DDPMScheduler,
+def reverse_diffuse(model: PixelNoisePredictor, scheduler: DDPMScheduler,
                     xs: torch.Tensor, pos: torch.Tensor, dates: List[str],
                     inference_step_num: int, device: str,
                     insitu_stats: torch.Tensor) -> torch.Tensor:

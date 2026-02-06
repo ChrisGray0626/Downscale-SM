@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Description DDPM dataset
+@Description DDPM_Image dataset
 @Author Chris
 @Date 2026
 """
@@ -14,7 +14,7 @@ from datasets.dataset import InsituStatsStore
 MIN_VALID_RATIO = 0.2
 
 
-class DDPMTrainDataset(CommonTrainDataset):
+class DDPMImageTrainDataset(CommonTrainDataset):
 
     def __init__(self):
         super().__init__(flat=False, filter_valid=False)
@@ -49,7 +49,7 @@ class DDPMTrainDataset(CommonTrainDataset):
         return date, x, y, valid, insitu_stats
 
 
-class DDPMInferenceDataset(CommonInferenceDataset):
+class DDPMImageInferenceDataset(CommonInferenceDataset):
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=False, filter_valid=False)

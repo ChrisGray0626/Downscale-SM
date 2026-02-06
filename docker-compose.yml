@@ -15,4 +15,4 @@ services:
       - ./src:/App/src
       - ./CHECKPOINTS:/App/CHECKPOINTS
       - /Volumes/Elements SE/Data/SMDownscaling:/DATA
-    command: python src/model/inferencer.py
+    command: python src/server.py
