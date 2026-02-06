@@ -45,6 +45,7 @@ LAMBDA_SCALE = 0.6
 LAMBDA_VAR = 0
 
 
+# TODO Loss
 def diffusion_loss_x0(
         pred_x0: torch.Tensor,
         target_x0: torch.Tensor,
@@ -52,10 +53,6 @@ def diffusion_loss_x0(
         timesteps: torch.Tensor,
         scheduler: DDPMScheduler,
 ) -> torch.Tensor:
-    """
-    MSE loss in x0-prediction mode with SNR-based weighting over timesteps.
-    snr_t = alpha_bar / (1 - alpha_bar), w_t = snr / (snr + 1).
-    """
     mse_per_pix = (pred_x0 - target_x0) ** 2
 
     alphas_cumprod = scheduler.alphas_cumprod.to(timesteps.device)

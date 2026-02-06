@@ -13,7 +13,7 @@ from diffusers import DDPMScheduler
 from tqdm import tqdm
 
 from constants import *
-from datasets.dataset import GridInfoStore
+from datasets.common_data_store import GridInfoStore
 from ddpm_common.module import build_device
 from ddpm_image.image_dataset import DDPMImageInferenceDataset
 from ddpm_image.image_module import ImageNoisePredictor
@@ -24,7 +24,7 @@ from utils.raster_util import write_tiff
 INFERENCE_STEP_NUM = 250
 SM_MIN = 0.02
 SM_MAX = 0.5
-RESOLUTION = RESOLUTION_1KM
+RESOLUTION = RESOLUTION_36KM
 
 
 def main():
@@ -38,15 +38,10 @@ def main():
 
     for date in tqdm(get_valid_dates(), desc="Inference"):
         dataset = DDPMImageInferenceDataset(date=date, resolution=RESOLUTION)
-        xs, date_str, insitu_stats = dataset.get_all()
-        xs = xs.unsqueeze(0).to(device)
-        insitu_stats = torch.from_numpy(insitu_stats).float().unsqueeze(0).to(device)
-
-        pred_y = reverse_diffuse(
-            model, scheduler, xs, [date_str], INFERENCE_STEP_NUM, device, insitu_stats=insitu_stats
-        )
-        pred_y = pred_y.squeeze(0).squeeze(0).cpu().numpy()
-        pred_y = dataset.denorm_y(pred_y)
+        # Inference (normalized prediction on grid)
+        pred_y = inference(model=model, dataset=dataset, device=device, scheduler=scheduler)
+        # Denormalize to physical scale
+        pred_y = dataset.denorm_y(pred_y.cpu().numpy())
         pred_y = np.clip(pred_y, SM_MIN, SM_MAX)
 
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
@@ -55,6 +50,27 @@ def main():
 
 def build_model() -> ImageNoisePredictor:
     return ImageNoisePredictor.from_pretrained(DDPM_IMAGE_MODEL_PATH)
+
+
+@torch.no_grad()
+def inference(
+        model: ImageNoisePredictor,
+        dataset: DDPMImageInferenceDataset,
+        device: str,
+        scheduler: DDPMScheduler,
+) -> torch.Tensor:
+    model = model.to(device)
+    model.eval()
+
+    xs, dates, insitu_stats = dataset.get_all()
+    xs = xs.unsqueeze(0).to(device)
+    insitu_stats = torch.from_numpy(insitu_stats).float().unsqueeze(0).to(device)
+
+    pred_y = reverse_diffuse(
+        model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, insitu_stats=insitu_stats
+    )
+    pred_y = pred_y.squeeze(0).squeeze(0)
+    return pred_y
 
 
 @torch.no_grad()

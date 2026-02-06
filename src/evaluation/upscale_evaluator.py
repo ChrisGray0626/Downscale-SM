@@ -10,13 +10,13 @@ import numpy as np
 from rasterio.warp import reproject, Resampling
 
 from constants import *
-from datasets.dataset import ModelDataStore, GridInfoStore
+from datasets.common_data_store import ModelDataStore, GridInfoStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
-    DDPM_NAME,
+    DDPM_IMAGE_NAME,
     RF_NAME,
     GWR_NAME,
     RESNET_NAME,

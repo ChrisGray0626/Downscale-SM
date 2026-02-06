@@ -13,20 +13,15 @@ import torch
 from torch.utils.data import Dataset
 
 from constants import *
-from utils.data_store import BaseDataStore, TiffStore
+from datasets.base_data_store import BaseDataStore, BaseTiffStore
 from utils.date_util import get_valid_dates
 from utils.raster_util import read_tiff, read_tiff_data, read_tiff_meta
 
 __all__ = [
     'TrainDataset',
-    'InferenceDataset',
-    'CorrectionDataset',
-    'DataCoverageDataset',
     'ModelDataStore',
     'GridInfoStore',
     'InsituStatsStore',
-    'InferenceResultStore',
-    'CorrectionResultStore',
     'InsituStore',
 ]
 
@@ -143,207 +138,19 @@ class TrainDataset(Dataset):
         return xs, ys, pos, date
 
 
-class InferenceDataset(Dataset):
-
-    def __init__(self, date: str, resolution: str):
-        self.date = date
-        self.resolution = resolution
-        self.data_store = ModelDataStore(resolution=self.resolution)
-        self.insitu_stats_store = InsituStatsStore(resolution=self.resolution)
-        self.grid_info_store = GridInfoStore(resolution=self.resolution)
-        self.train_dataset = TrainDataset()
-
-        self._load_data()
-        self._filter_valid()
-        self._norm()
-
-    def _load_data(self):
-        xs = np.stack([self.data_store.get(name, self.date) for name in
-                       [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]], axis=-1)
-
-        grid_info = self.grid_info_store.get()
-        H, W = grid_info["H"], grid_info["W"]
-
-        self.xs = xs.reshape(H * W, -1).astype(np.float32)
-        self.pos = grid_info["pos"].reshape(H * W, -1).astype(np.float32)
-        self.rows_full = grid_info["rows"].flatten()
-        self.cols_full = grid_info["cols"].flatten()
-
-        self.insitu_stats = self.insitu_stats_store.get(self.date)
-
-        # Load in-situ data for bias correction training
-        insitu_map = self.data_store.get(IN_SITU_NAME, self.date)
-        self.insitu = insitu_map.flatten().astype(np.float32)
-        self.insitu_mask = (~np.isnan(self.insitu)).astype(np.float32)
-
-    def _filter_valid(self):
-        valid = ~np.isnan(self.xs).any(axis=1)
-        self.valid_indices = np.where(valid)[0]
-
-        self.xs = self.xs[valid]
-        self.pos = self.pos[valid]
-        self.rows = self.rows_full[valid]
-        self.cols = self.cols_full[valid]
-        self.insitu = self.insitu[valid]
-        self.insitu_mask = self.insitu_mask[valid]
-
-    def _norm(self):
-        x_mean = self.train_dataset.x_mean
-        x_std = self.train_dataset.x_std
-        self.xs = (self.xs - x_mean) / x_std
-
-    def denorm_y(self, ys: torch.Tensor) -> torch.Tensor:
-        return self.train_dataset.denorm_y(ys)
-
-    def __len__(self):
-        return len(self.xs)
-
-    def __getitem__(self, idx):
-        xs = self.xs[idx]
-        pos = self.pos[idx]
-        date = self.date
-        row = self.rows[idx]
-        col = self.cols[idx]
-
-        return xs, pos, date
-
-
-class CorrectionDataset(Dataset):
-
-    def __init__(self, date: str, resolution: str):
-        self.date = date
-        self.resolution = resolution
-        self.inference_result_store = InferenceResultStore(resolution=self.resolution)
-        self.data_store = ModelDataStore(resolution=self.resolution)
-        self.grid_info_store = GridInfoStore(resolution=self.resolution)
-        self.train_dataset = TrainDataset()
-
-        self._load_data()
-        self._filter_valid()
-        self._norm()
-
-    def _load_data(self):
-        pred_map = self.inference_result_store.get(self.date)
-
-        xs = np.stack([
-            self.data_store.get(name, self.date) for name in
-            [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]
-        ], axis=-1)
-
-        insitu_map = self.data_store.get(IN_SITU_NAME, self.date)
-
-        grid_info = self.grid_info_store.get()
-        H, W = grid_info["H"], grid_info["W"]
-
-        self.pred_map = pred_map.astype(np.float32)
-        self.xs = xs.reshape(H * W, -1).astype(np.float32)
-        self.insitu = insitu_map.flatten().astype(np.float32)
-        self.grid_info = grid_info
-        self.rows_full = grid_info["rows"].flatten()
-        self.cols_full = grid_info["cols"].flatten()
-
-    def _filter_valid(self):
-        valid = ~np.isnan(self.xs).any(axis=1)
-
-        self.xs = self.xs[valid]
-        self.rows = self.rows_full[valid]
-        self.cols = self.cols_full[valid]
-        self.insitu = self.insitu[valid]
-
-    def _norm(self):
-        x_mean = self.train_dataset.x_mean
-        x_std = self.train_dataset.x_std.copy()
-        x_std[x_std == 0] = 1.0
-        self.xs = (self.xs - x_mean) / x_std
-
-    def __len__(self):
-        return len(self.xs)
-
-    def __getitem__(self, idx):
-        xs = torch.from_numpy(self.xs[idx]).float()
-        pred_y = torch.tensor(self.pred_map[self.rows[idx], self.cols[idx]], dtype=torch.float32)
-        row = torch.tensor(self.rows[idx], dtype=torch.long)
-        col = torch.tensor(self.cols[idx], dtype=torch.long)
-        return xs, pred_y, row, col
-
-
-class DataCoverageDataset(Dataset):
-
-    def __init__(self, resolution: str):
-        self.resolution = resolution
-        self.data_store = ModelDataStore(resolution=self.resolution)
-        self.grid_info_store = GridInfoStore(resolution=self.resolution)
-
-        grid_info = self.grid_info_store.get()
-        self.H, self.W = grid_info["H"], grid_info["W"]
-        self.rows = grid_info["rows"]
-        self.cols = grid_info["cols"]
-        self.feature_names = [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME, SM_NAME, IN_SITU_NAME]
-
-    def get(self, date: str) -> tuple:
-        features = {}
-        for name in self.feature_names:
-            try:
-                if name == DEM_NAME:
-                    features[name] = self.data_store.get(name, None)
-                else:
-                    features[name] = self.data_store.get(name, date)
-            except FileNotFoundError:
-                features[name] = np.full((self.H, self.W), np.nan, dtype=np.float32)
-
-        train_valid = ~np.isnan(features[NDVI_NAME]) & ~np.isnan(features[LST_NAME]) & \
-                      ~np.isnan(features[ALBEDO_NAME]) & ~np.isnan(features[PRECIPITATION_NAME]) & \
-                      ~np.isnan(features[DEM_NAME]) & ~np.isnan(features[SM_NAME])
-        insitu_valid = ~np.isnan(features[IN_SITU_NAME])
-
-        all_positions_mask = train_valid | insitu_valid
-
-        rows = self.rows[all_positions_mask]
-        cols = self.cols[all_positions_mask]
-        feature_values = {name: features[name][all_positions_mask] for name in self.feature_names}
-        train_valid_mask = train_valid[all_positions_mask]
-        insitu_valid_mask = insitu_valid[all_positions_mask]
-
-        return rows, cols, feature_values, train_valid_mask, insitu_valid_mask
-
-    def get_all(self) -> tuple:
-        dates = get_valid_dates()
-        all_rows, all_cols, all_dates = [], [], []
-        all_feature_values = {name: [] for name in self.feature_names}
-        all_train_valid, all_insitu_valid = [], []
-
-        for date in dates:
-            rows, cols, feature_values, train_valid, insitu_valid = self.get(date)
-
-            all_rows.append(rows)
-            all_cols.append(cols)
-            all_dates.extend([date] * len(rows))
-            for name in self.feature_names:
-                all_feature_values[name].append(feature_values[name])
-            all_train_valid.append(train_valid)
-            all_insitu_valid.append(insitu_valid)
-
-        rows = np.concatenate(all_rows)
-        cols = np.concatenate(all_cols)
-        feature_values = {name: np.concatenate(all_feature_values[name]) for name in self.feature_names}
-        train_valid = np.concatenate(all_train_valid)
-        insitu_valid = np.concatenate(all_insitu_valid)
-
-        return rows, cols, feature_values, train_valid, insitu_valid, all_dates
-
-
 class InsituStatsStore(BaseDataStore[np.ndarray]):
 
     def __init__(self, resolution: str):
         super().__init__()
         self.resolution = resolution
+        self.insitu_store = InsituStore(resolution=self.resolution)
         self.data_store = ModelDataStore(resolution=self.resolution)
 
     def get(self, date: str, cache_used: bool = True) -> np.ndarray:
         return self._get(date, lambda: self._load(date), cache_used=cache_used)
 
     def _load(self, date: str) -> np.ndarray:
-        insitus = self.data_store.get(IN_SITU_NAME, date)
+        insitus = self.insitu_store.get(date)
 
         return self._calc_insitu_stats_from_data(insitus)
 
@@ -362,31 +169,17 @@ class InsituStatsStore(BaseDataStore[np.ndarray]):
         return insitu_stats
 
 
-class InferenceResultStore(TiffStore):
-
-    def __init__(self, resolution: str):
-        base_dir = DDPM_IMAGE_INFERENCE_DIR_PATH
-        super().__init__(base_dir, resolution)
-
-
-class CorrectionResultStore(TiffStore):
-
-    def __init__(self, resolution: str):
-        base_dir = CORRECTION_DIR_PATH
-        super().__init__(base_dir, resolution)
-
-
 class ModelDataStore(BaseDataStore[np.ndarray]):
 
     def __init__(self, resolution: str):
         super().__init__()
         self.resolution = resolution
-        self._tiff_stores: Dict[str, TiffStore] = {}
+        self._tiff_stores: Dict[str, BaseTiffStore] = {}
 
-    def _tiff_store(self, name: str) -> TiffStore:
+    def _tiff_store(self, name: str) -> BaseTiffStore:
         if name not in self._tiff_stores:
             base_dir = os.path.join(PROCESSED_DIR_PATH, name)
-            self._tiff_stores[name] = TiffStore(base_dir=base_dir, resolution=self.resolution)
+            self._tiff_stores[name] = BaseTiffStore(base_dir=base_dir, resolution=self.resolution)
         return self._tiff_stores[name]
 
     def get(self, name: str, date: Optional[str] = None, cache_used: bool = True) -> np.ndarray:
@@ -416,24 +209,16 @@ class DEMStore(BaseDataStore[np.ndarray]):
         return read_tiff_data(file_path).astype(np.float32)
 
 
-class SMAPStore(TiffStore):
+class SMAPStore(BaseTiffStore):
 
     def __init__(self, resolution: str):
         base_dir = os.path.join(PROCESSED_DIR_PATH, SM_NAME)
         super().__init__(base_dir, resolution)
 
 
-# TODO InsituStore implementation
-class InsituStore(TiffStore):
+class InsituStore(BaseTiffStore):
     def __init__(self, resolution: str):
         base_dir = os.path.join(PROCESSED_DIR_PATH, IN_SITU_NAME)
-        super().__init__(base_dir, resolution)
-
-
-class DDPMPixelInferenceStore(TiffStore):
-
-    def __init__(self, resolution: str):
-        base_dir = DDPM_PIXEL_INFERENCE_DIR_PATH
         super().__init__(base_dir, resolution)
 
 

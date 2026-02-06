@@ -10,13 +10,13 @@ import numpy as np
 import torch
 
 from constants import *
-from datasets.common_dataset import CommonInferenceDataset, CommonTrainDataset, FEATURE_NAMES
-from utils.data_store import TiffStore
+from datasets.base_data_store import BaseTiffStore
+from datasets.base_dataset import BaseInferenceDataset, BaseTrainDataset, FEATURE_NAMES
 
 MIN_VALID_RATIO = 0.5
 
 
-class ResNetTrainDataset(CommonTrainDataset):
+class ResNetTrainDataset(BaseTrainDataset):
 
     def __init__(self):
         super().__init__(flat=False, filter_valid=False)
@@ -43,7 +43,7 @@ class ResNetTrainDataset(CommonTrainDataset):
         return x, y, valid
 
 
-class ResNetInferenceDataset(CommonInferenceDataset):
+class ResNetInferenceDataset(BaseInferenceDataset):
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=False, filter_valid=False)
@@ -68,7 +68,7 @@ class ResNetInferenceDataset(CommonInferenceDataset):
         return xs
 
 
-class ResNetResultStore(TiffStore):
+class ResNetResultStore(BaseTiffStore):
     def __init__(self, resolution: str):
         base_dir = RESNET_DIR_PATH
         super().__init__(base_dir, resolution)

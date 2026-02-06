@@ -17,7 +17,7 @@ from utils.raster_util import read_tiff_data
 
 __all__ = [
     'BaseDataStore',
-    'TiffStore',
+    'BaseTiffStore',
 ]
 
 T = TypeVar("T")
@@ -57,7 +57,7 @@ class BaseDataStore(Generic[T]):
         self._cache.clear()
 
 
-class TiffStore(BaseDataStore[np.ndarray]):
+class BaseTiffStore(BaseDataStore[np.ndarray]):
 
     def __init__(self, base_dir: str, resolution: str):
         super().__init__()

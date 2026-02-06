@@ -9,15 +9,16 @@
 import numpy as np
 
 from constants import *
-from datasets.dataset import GridInfoStore, InsituStore
+from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 
 PROD_NAMES = [
-    DDPM_NAME,
+    DDPM_IMAGE_NAME,
     RF_NAME,
     GWR_NAME,
     RESNET_NAME,
+    SM_NAME,
 ]
 RESOLUTIONS = [
     RESOLUTION_36KM,
@@ -60,7 +61,7 @@ class InsituGridEvalDataset:
     def __init__(self, product_name, resolution):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = build_pred_store(product_name, resolution)
+        self.pred_store = build_pred_store(product_name, resolution, is_correction=True)
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()

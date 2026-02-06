@@ -12,11 +12,11 @@ import numpy as np
 import pandas as pd
 
 from constants import *
-from datasets.dataset import GridInfoStore, InsituStore
+from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 
-PROD_NAMES = [ESA_CCI_NAME]
+PROD_NAMES = [DDPM_IMAGE_NAME]
 RESOLUTION = RESOLUTION_36KM
 EVALUATION_DIR_PATH = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_TimeSeries_{RESOLUTION}")
 MIN_VALID_DATES = 300
@@ -41,7 +41,7 @@ class InsituTimeseriesEvalDataset:
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()
-        self._pred_stores = {p: build_pred_store(p, self.resolution) for p in self.prod_names}
+        self._pred_stores = {p: build_pred_store(p, self.resolution, is_correction=True) for p in self.prod_names}
 
     @property
     def _dates(self) -> list:

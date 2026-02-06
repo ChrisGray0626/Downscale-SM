@@ -8,13 +8,15 @@
 import numpy as np
 import torch
 
-from datasets.common_dataset import CommonInferenceDataset, CommonTrainDataset
-from datasets.dataset import InsituStatsStore
+from constants import DDPM_IMAGE_INFERENCE_DIR_PATH, DDPM_IMAGE_CORRECTION_DIR_PATH
+from datasets.base_data_store import BaseTiffStore
+from datasets.base_dataset import BaseInferenceDataset, BaseTrainDataset
+from datasets.common_data_store import InsituStatsStore
 
 MIN_VALID_RATIO = 0.2
 
 
-class DDPMImageTrainDataset(CommonTrainDataset):
+class DDPMImageTrainDataset(BaseTrainDataset):
 
     def __init__(self):
         super().__init__(flat=False, filter_valid=False)
@@ -49,7 +51,7 @@ class DDPMImageTrainDataset(CommonTrainDataset):
         return date, x, y, valid, insitu_stats
 
 
-class DDPMImageInferenceDataset(CommonInferenceDataset):
+class DDPMImageInferenceDataset(BaseInferenceDataset):
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=False, filter_valid=False)
@@ -60,3 +62,17 @@ class DDPMImageInferenceDataset(CommonInferenceDataset):
         xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)
         xs = torch.from_numpy(xs).permute(2, 0, 1)
         return xs, self.date, self.insitu_stats
+
+
+class DDPMImageInferenceResultStore(BaseTiffStore):
+
+    def __init__(self, resolution: str):
+        base_dir = DDPM_IMAGE_INFERENCE_DIR_PATH
+        super().__init__(base_dir, resolution)
+
+
+class DDPMImageCorrectionResultStore(BaseTiffStore):
+
+    def __init__(self, resolution: str):
+        base_dir = DDPM_IMAGE_CORRECTION_DIR_PATH
+        super().__init__(base_dir, resolution)

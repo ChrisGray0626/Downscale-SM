@@ -5,8 +5,11 @@
   @Author Chris
   @Date 2026/1/27
 """
-from constants import ESA_CCI_NAME, RF_NAME, DDPM_NAME, GWR_NAME, RESNET_NAME, SM_NAME, IN_SITU_NAME, PIXEL_DDPM_NAME
-from datasets.dataset import CorrectionResultStore, InferenceResultStore, SMAPStore, InsituStore, PixelInferenceStore
+from constants import ESA_CCI_NAME, RF_NAME, DDPM_IMAGE_NAME, GWR_NAME, RESNET_NAME, SM_NAME, IN_SITU_NAME, \
+    DDPM_PIXEL_NAME
+from datasets.common_data_store import SMAPStore, InsituStore
+from ddpm_image.image_dataset import DDPMImageCorrectionResultStore, DDPMImageInferenceResultStore
+from ddpm_pixel.pixel_dataset import DDPMPixelCorrectionResultStore, DDPMPixelInferenceResultStore
 from esa_cci.esa_cci_dataset import ESACCIStore
 from gwr.gwr_dataset import GWRResultStore
 from resnet.resnet_dataset import ResNetResultStore
@@ -26,11 +29,14 @@ def build_pred_store(product_name, resolution, is_correction=False):
         return SMAPStore(resolution=resolution)
     elif product_name == IN_SITU_NAME:
         return InsituStore(resolution=resolution)
-    elif product_name == DDPM_NAME:
+    elif product_name == DDPM_IMAGE_NAME:
         if is_correction:
-            return CorrectionResultStore(resolution=resolution)
+            return DDPMImageCorrectionResultStore(resolution=resolution)
         else:
-            return InferenceResultStore(resolution=resolution)
-    elif product_name == PIXEL_DDPM_NAME:
-        return PixelInferenceStore(resolution=resolution)
+            return DDPMImageInferenceResultStore(resolution=resolution)
+    elif product_name == DDPM_PIXEL_NAME:
+        if is_correction:
+            return DDPMPixelCorrectionResultStore(resolution=resolution)
+        else:
+            return DDPMPixelInferenceResultStore(resolution=resolution)
     raise ValueError(f"Unknown product name: {product_name}")

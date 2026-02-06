@@ -13,13 +13,18 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from constants import *
-from datasets.dataset import ModelDataStore, GridInfoStore
+from datasets.common_data_store import ModelDataStore, GridInfoStore
 from utils.date_util import get_valid_dates
+
+__all__ = [
+    "BaseTrainDataset",
+    "BaseInferenceDataset",
+]
 
 FEATURE_NAMES = [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]
 
 
-class CommonTrainDataset(Dataset):
+class BaseTrainDataset(Dataset):
     _instance = None
     _lock = threading.Lock()
 
@@ -56,7 +61,7 @@ class CommonTrainDataset(Dataset):
         grid_info = self.grid_info_store.get()
         self.H, self.W = grid_info["H"], grid_info["W"]
         self.grid_info = grid_info
-        self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
+        self.pos = np.asarray(grid_info["pos"], dtype=np.float32)
         self.rows = grid_info["rows"]
         self.cols = grid_info["cols"]
 
@@ -97,7 +102,7 @@ class CommonTrainDataset(Dataset):
         x_list, y_list, pos_list, date_list, rows_list, cols_list = [], [], [], [], [], []
         for i in range(len(dates)):
             n = self.H * self.W
-            x_list.append(self.xs[i].reshape(n, -1).astype(np.float64))
+            x_list.append(self.xs[i].reshape(n, -1).astype(np.float32))
             y_list.append(self.ys[i].reshape(-1))
             pos_list.append(pos_1d)
             date_list.append(np.full(n, dates[i], dtype=object))
@@ -143,7 +148,7 @@ class CommonTrainDataset(Dataset):
         }
 
 
-class CommonInferenceDataset(Dataset):
+class BaseInferenceDataset(Dataset):
 
     def __init__(self, date: str, resolution: str, flat: bool = True, filter_valid: bool = True):
         self.date = date
@@ -152,7 +157,7 @@ class CommonInferenceDataset(Dataset):
         self.filter_valid = filter_valid
         self.data_store = ModelDataStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
-        self.train_dataset = CommonTrainDataset(flat=flat, filter_valid=filter_valid)
+        self.train_dataset = BaseTrainDataset(flat=flat, filter_valid=filter_valid)
         self._load_data()
         self._build_valid_mask()
         self._norm()
@@ -165,7 +170,7 @@ class CommonInferenceDataset(Dataset):
         grid_info = self.grid_info_store.get()
         self.H, self.W = grid_info["H"], grid_info["W"]
         self.grid_info = grid_info
-        self.pos = np.asarray(grid_info["pos"], dtype=np.float64)
+        self.pos = np.asarray(grid_info["pos"], dtype=np.float32)
         self.rows = grid_info["rows"]
         self.cols = grid_info["cols"]
         xs = np.stack(

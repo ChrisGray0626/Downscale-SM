@@ -7,11 +7,11 @@
 """
 
 from constants import GWR_DIR_PATH, LONGITUDE_NAME, LATITUDE_NAME, X_NAME, Y_NAME, ROW_NAME, COL_NAME
-from datasets.common_dataset import CommonTrainDataset, CommonInferenceDataset
-from utils.data_store import TiffStore
+from datasets.base_data_store import BaseTiffStore
+from datasets.base_dataset import BaseTrainDataset, BaseInferenceDataset
 
 
-class GWRTrainDataset(CommonTrainDataset):
+class GWRTrainDataset(BaseTrainDataset):
 
     def __init__(self):
         super().__init__(flat=True, filter_valid=True)
@@ -21,7 +21,7 @@ class GWRTrainDataset(CommonTrainDataset):
         return data[LONGITUDE_NAME], data[LATITUDE_NAME], data[X_NAME], data[Y_NAME].reshape(-1, 1)
 
 
-class GWRInferenceDataset(CommonInferenceDataset):
+class GWRInferenceDataset(BaseInferenceDataset):
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=True, filter_valid=True)
@@ -31,7 +31,7 @@ class GWRInferenceDataset(CommonInferenceDataset):
         return data[LONGITUDE_NAME], data[LATITUDE_NAME], data[X_NAME], data[ROW_NAME], data[COL_NAME]
 
 
-class GWRResultStore(TiffStore):
+class GWRResultStore(BaseTiffStore):
     def __init__(self, resolution: str):
         base_dir = GWR_DIR_PATH
         super().__init__(base_dir, resolution)

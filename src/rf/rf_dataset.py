@@ -7,11 +7,11 @@
 """
 
 from constants import *
-from datasets.common_dataset import CommonTrainDataset, CommonInferenceDataset
-from utils.data_store import TiffStore
+from datasets.base_data_store import BaseTiffStore
+from datasets.base_dataset import BaseTrainDataset, BaseInferenceDataset
 
 
-class RFTrainDataset(CommonTrainDataset):
+class RFTrainDataset(BaseTrainDataset):
 
     def __init__(self):
         super().__init__(flat=True, filter_valid=True)
@@ -21,7 +21,7 @@ class RFTrainDataset(CommonTrainDataset):
         return data[X_NAME], data[Y_NAME]
 
 
-class RFInferenceDataset(CommonInferenceDataset):
+class RFInferenceDataset(BaseInferenceDataset):
 
     def __init__(self, date: str, resolution: str):
         super().__init__(date, resolution, flat=True, filter_valid=True)
@@ -31,7 +31,7 @@ class RFInferenceDataset(CommonInferenceDataset):
         return data[ROW_NAME], data[COL_NAME], data[X_NAME]
 
 
-class RFResultStore(TiffStore):
+class RFResultStore(BaseTiffStore):
     def __init__(self, resolution: str):
         base_dir = RF_DIR_PATH
         super().__init__(base_dir, resolution)

@@ -9,13 +9,15 @@
 import numpy as np
 
 from constants import *
-from datasets.dataset import GridInfoStore, ModelDataStore
+from datasets.common_data_store import GridInfoStore, ModelDataStore
 from evaluation.evaluator import Evaluator
 from evaluation.pred_store import build_pred_store
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
-    DDPM_NAME,
+    IN_SITU_NAME,
+    DDPM_IMAGE_NAME,
+    DDPM_PIXEL_NAME,
     RF_NAME,
     GWR_NAME,
     RESNET_NAME,

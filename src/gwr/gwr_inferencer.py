@@ -12,7 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 from constants import *
-from datasets.dataset import GridInfoStore
+from datasets.common_data_store import GridInfoStore
 from gwr.gwr_dataset import GWRInferenceDataset
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff

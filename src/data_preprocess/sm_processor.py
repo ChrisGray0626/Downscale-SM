@@ -16,7 +16,7 @@ from pyproj import CRS
 from rasterio.transform import from_origin
 
 from constants import *
-from utils.data_store import BaseDataStore
+from datasets.base_data_store import BaseDataStore
 from utils.raster_util import write_tiff, read_tiff_meta, read_tiff_data
 from utils.workflow.common.Resampler import BatchResampleTiffJob
 from utils.workflow.common.Writer import TiffWriter

@@ -14,8 +14,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
-from datasets.dataset import InferenceDataset, GridInfoStore
+from datasets.common_data_store import GridInfoStore
 from ddpm_common.module import build_device
+from ddpm_pixel.pixel_dataset import DDPMPixelInferenceDataset
 from ddpm_pixel.pixel_module import PixelNoisePredictor
 from ddpm_pixel.pixel_trainer import build_scheduler
 from utils.date_util import get_valid_dates
@@ -38,19 +39,20 @@ def main():
     dst_dir_path = os.path.join(DDPM_PIXEL_INFERENCE_DIR_PATH, RESOLUTION)
     os.makedirs(dst_dir_path, exist_ok=True)
 
-    dates = get_valid_dates()
-    for date in tqdm(dates, desc="Inference"):
-        inference_dataset = InferenceDataset(date=date, resolution=RESOLUTION)
+    for date in tqdm(get_valid_dates(), desc="Inference"):
+        dataset = DDPMPixelInferenceDataset(date=date, resolution=RESOLUTION)
 
         # Inference
-        pred_ys = inference(model=model, dataset=inference_dataset, device=device)
+        pred_ys = inference(model=model, dataset=dataset, device=device)
+        # Denormalize to physical scale
+        pred_ys = dataset.denorm_y(pred_ys).cpu().numpy()
 
         # Clip
         pred_ys = np.clip(pred_ys, SM_MIN, SM_MAX)
 
         # Save Inference Result
         pred_map = np.full((grid_info["H"], grid_info["W"]), np.nan, dtype=np.float32)
-        pred_map[inference_dataset.rows, inference_dataset.cols] = pred_ys
+        pred_map[dataset.rows, dataset.cols] = pred_ys
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
         write_tiff(pred_map, dst_file_path, transform=grid_info["transform"], crs=grid_info["crs"])
 
@@ -62,7 +64,7 @@ def build_model() -> PixelNoisePredictor:
 
 
 @torch.no_grad()
-def inference(model: PixelNoisePredictor, dataset: InferenceDataset, device: str) -> np.ndarray:
+def inference(model: PixelNoisePredictor, dataset: DDPMPixelInferenceDataset, device: str) -> torch.Tensor:
     model = model.to(device)
     scheduler = build_scheduler()
     model.eval()
@@ -78,12 +80,10 @@ def inference(model: PixelNoisePredictor, dataset: InferenceDataset, device: str
 
         batch_pred_ys = reverse_diffuse(model, scheduler, batch_xs, batch_pos, batch_dates, INFERENCE_STEP_NUM,
                                         device=device, insitu_stats=batch_insitu_stats)
-        batch_pred_ys = dataset.denorm_y(batch_pred_ys.reshape(-1))
-        batch_pred_ys = batch_pred_ys.cpu().numpy()
-
+        batch_pred_ys = batch_pred_ys.reshape(-1).cpu()
         pred_ys_list.append(batch_pred_ys)
 
-    pred_ys = np.concatenate(pred_ys_list)
+    pred_ys = torch.cat(pred_ys_list, dim=0)
     return pred_ys
 
 
@@ -107,6 +107,7 @@ def reverse_diffuse(model: PixelNoisePredictor, scheduler: DDPMScheduler,
         ys = step_out.prev_sample
 
     return ys
+
 
 if __name__ == "__main__":
     main()

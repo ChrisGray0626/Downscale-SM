@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
-from datasets.dataset import CorrectionDataset, GridInfoStore
+from datasets.common_data_store import GridInfoStore
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -25,9 +25,10 @@ SM_MAX = 0.5
 RESOLUTION = RESOLUTION_1KM
 
 
+# TODO
 def main():
     grid_info = GridInfoStore(RESOLUTION).get()
-    correction_dir_path = os.path.join(CORRECTION_DIR_PATH, RESOLUTION)
+    correction_dir_path = os.path.join(DDPM_IMAGE_CORRECTION_DIR_PATH, RESOLUTION)
     os.makedirs(correction_dir_path, exist_ok=True)
 
     # Collect Data for Bias Correction Training
@@ -88,6 +89,64 @@ def main():
         dst_file_path = os.path.join(correction_dir_path, f"{date}{TIFF_SUFFIX}")
         write_tiff(pred_map, dst_file_path, transform=grid_info["transform"], crs=grid_info["crs"])
 
+
+class CorrectionDataset(Dataset):
+
+    def __init__(self, date: str, resolution: str):
+        self.date = date
+        self.resolution = resolution
+        self.inference_result_store = DDPMImageInferenceResultStore(resolution=self.resolution)
+        self.data_store = ModelDataStore(resolution=self.resolution)
+        self.grid_info_store = GridInfoStore(resolution=self.resolution)
+        self.train_dataset = TrainDataset()
+
+        self._load_data()
+        self._filter_valid()
+        self._norm()
+
+    def _load_data(self):
+        pred_map = self.inference_result_store.get(self.date)
+
+        xs = np.stack([
+            self.data_store.get(name, self.date) for name in
+            [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]
+        ], axis=-1)
+
+        insitu_map = self.data_store.get(IN_SITU_NAME, self.date)
+
+        grid_info = self.grid_info_store.get()
+        H, W = grid_info["H"], grid_info["W"]
+
+        self.pred_map = pred_map.astype(np.float32)
+        self.xs = xs.reshape(H * W, -1).astype(np.float32)
+        self.insitu = insitu_map.flatten().astype(np.float32)
+        self.grid_info = grid_info
+        self.rows_full = grid_info["rows"].flatten()
+        self.cols_full = grid_info["cols"].flatten()
+
+    def _filter_valid(self):
+        valid = ~np.isnan(self.xs).any(axis=1)
+
+        self.xs = self.xs[valid]
+        self.rows = self.rows_full[valid]
+        self.cols = self.cols_full[valid]
+        self.insitu = self.insitu[valid]
+
+    def _norm(self):
+        x_mean = self.train_dataset.x_mean
+        x_std = self.train_dataset.x_std.copy()
+        x_std[x_std == 0] = 1.0
+        self.xs = (self.xs - x_mean) / x_std
+
+    def __len__(self):
+        return len(self.xs)
+
+    def __getitem__(self, idx):
+        xs = torch.from_numpy(self.xs[idx]).float()
+        pred_y = torch.tensor(self.pred_map[self.rows[idx], self.cols[idx]], dtype=torch.float32)
+        row = torch.tensor(self.rows[idx], dtype=torch.long)
+        col = torch.tensor(self.cols[idx], dtype=torch.long)
+        return xs, pred_y, row, col
 
 class BiasCorrector:
 

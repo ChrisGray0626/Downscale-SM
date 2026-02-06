@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from constants import *
-from model.module import build_device
+from ddpm_common.module import build_device
 from resnet.resnet_dataset import ResNetTrainDataset
 from resnet.resnet_model import ResNet, save_checkpoint, DEFAULT_CONFIG
 

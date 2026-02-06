@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from tqdm import tqdm
 
 from constants import *
-from datasets.dataset import GridInfoStore
+from datasets.common_data_store import GridInfoStore
 from rf.rf_dataset import RFInferenceDataset
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff

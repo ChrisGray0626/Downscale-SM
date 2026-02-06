@@ -11,8 +11,8 @@ from diffusers import DDPMScheduler
 from torch.utils.data import Dataset, DataLoader
 
 from constants import *
-from datasets.dataset import TrainDataset, InsituStatsStore
 from ddpm_common.module import build_device, EarlyStopping
+from ddpm_pixel.pixel_dataset import DDPMPixelTrainDataset
 from ddpm_pixel.pixel_module import PixelNoisePredictor
 
 # Dataset setting
@@ -38,8 +38,7 @@ MIN_DELTA = 1e-6
 
 
 def main():
-    dataset = TrainDataset()
-    insitu_stats_store = InsituStatsStore(resolution=RESOLUTION_36KM)
+    dataset = DDPMPixelTrainDataset()
     train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(
@@ -54,7 +53,7 @@ def main():
         res_block_num=3,
     )
 
-    trainer = Trainer(model, train_dataset, val_dataset, insitu_stats_store)
+    trainer = Trainer(model, train_dataset, val_dataset)
     model = trainer.run()
 
     model.save_pretrained(DDPM_PIXEL_MODEL_PATH)
@@ -63,11 +62,10 @@ def main():
 class Trainer:
 
     def __init__(self, model: PixelNoisePredictor,
-                 train_dataset: Dataset, val_dataset: Dataset, insitu_stats_store: InsituStatsStore):
+                 train_dataset: Dataset, val_dataset: Dataset):
         self.model = model
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
-        self.insitu_stats_store = insitu_stats_store
 
         self.scheduler = build_scheduler()
         self.total_epoch = TOTAL_EPOCH
@@ -82,15 +80,11 @@ class Trainer:
         total_loss = 0.0
         total_samples = 0
 
-        for batch_xs, batch_ys, batch_pos, batch_dates in data_loader:
+        for batch_dates, batch_pos, batch_xs, batch_ys, batch_insitu_stats in data_loader:
+            batch_pos = batch_pos.to(self.device)
             batch_xs = batch_xs.to(self.device)
             batch_ys = batch_ys.to(self.device).unsqueeze(1)
-            batch_pos = batch_pos.to(self.device)
-
-            batch_insitu_stats = torch.stack([
-                torch.from_numpy(self.insitu_stats_store.get(date)).float()
-                for date in batch_dates
-            ]).to(self.device)
+            batch_insitu_stats = batch_insitu_stats.to(self.device)
 
             B = batch_xs.shape[0]
 
