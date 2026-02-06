@@ -36,21 +36,6 @@ PATIENCE = 5
 MIN_DELTA = 1e-6
 
 
-def diffusion_loss_x0_pixel(
-        pred_x0: torch.Tensor,
-        target_x0: torch.Tensor,
-        timesteps: torch.Tensor,
-        scheduler: DDPMScheduler,
-) -> torch.Tensor:
-    """SNR-weighted MSE for x0-prediction on pixel outputs (B, 1). All pixels are valid."""
-    mse_per_pix = (pred_x0 - target_x0) ** 2
-    alphas_cumprod = scheduler.alphas_cumprod.to(timesteps.device)
-    alpha_bar = alphas_cumprod[timesteps]
-    snr = alpha_bar / (1.0 - alpha_bar + 1e-8)
-    weights = (snr / (snr + 1.0)).view(-1, 1)
-    return (weights * mse_per_pix).mean()
-
-
 def main():
     dataset = TrainDataset()
     insitu_stats_store = InsituStatsStore(resolution=RESOLUTION_36KM)
@@ -71,7 +56,7 @@ def main():
     trainer = Trainer(model, train_dataset, val_dataset, insitu_stats_store)
     model = trainer.run()
 
-    model.save_pretrained(PIXEL_DDPM_MODEL_PATH)
+    model.save_pretrained(DDPM_PIXEL_MODEL_PATH)
 
 
 class Trainer:
@@ -120,16 +105,15 @@ class Trainer:
                 timesteps=sampled_timesteps  # type: ignore[arg-type]
             )
 
-            # x0-prediction: model predicts clean sample x0
-            pred_x0 = self.model.forward(
+            pred_ys = self.model.forward(
                 diffused_ys, batch_xs, sampled_timesteps,
                 pos=batch_pos, dates=batch_dates,
                 insitu_stats=batch_insitu_stats
             )
 
-            loss = diffusion_loss_x0_pixel(
-                pred_x0=pred_x0,
-                target_x0=batch_ys,
+            loss = calc_loss(
+                pred_ys=pred_ys,
+                true_ys=batch_ys,
                 timesteps=sampled_timesteps,
                 scheduler=self.scheduler,
             )
@@ -199,6 +183,17 @@ def build_early_stopping() -> EarlyStopping:
         min_delta=MIN_DELTA,
         restore_best_weights=True
     )
+
+
+def calc_loss(pred_ys: torch.Tensor, true_ys: torch.Tensor, timesteps: torch.Tensor,
+              scheduler: DDPMScheduler) -> torch.Tensor:
+    mse = (pred_ys - true_ys) ** 2
+    alphas_cumprod = scheduler.alphas_cumprod.to(timesteps.device)
+    alpha_bar = alphas_cumprod[timesteps]
+    snr = alpha_bar / (1.0 - alpha_bar + 1e-8)
+    weights = (snr / (snr + 1.0)).view(-1, 1)
+
+    return (weights * mse).mean()
 
 
 if __name__ == "__main__":

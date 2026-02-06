@@ -10,13 +10,13 @@ from typing import List
 import numpy as np
 import torch
 from diffusers import DDPMScheduler
+from model.pixel_trainer import build_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import InferenceDataset, GridInfoStore
 from model.module import NoisePredictorPixel, build_device
-from model.pixel_trainer import build_scheduler
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -55,7 +55,7 @@ def main():
 
 
 def build_model() -> NoisePredictorPixel:
-    model = NoisePredictorPixel.from_pretrained(PIXEL_DDPM_MODEL_PATH)
+    model = NoisePredictorPixel.from_pretrained(DDPM_PIXEL_MODEL_PATH)
 
     return model
 
