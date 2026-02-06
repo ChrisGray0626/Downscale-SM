@@ -5,16 +5,18 @@
   @Author Chris
   @Date 2026/2/6
 """
+from typing import List
 
 import numpy as np
 import torch
+from diffusers import DDPMScheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from constants import *
 from datasets.dataset import InferenceDataset, GridInfoStore
 from model.module import NoisePredictorPixel, build_device
-from model.pixel_trainer import build_scheduler, reverse_diffuse
+from model.pixel_trainer import build_scheduler
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -83,6 +85,27 @@ def inference(model: NoisePredictorPixel, dataset: InferenceDataset, device: str
     pred_ys = np.concatenate(pred_ys_list)
     return pred_ys
 
+
+@torch.no_grad()
+def reverse_diffuse(model: NoisePredictorPixel, scheduler: DDPMScheduler,
+                    xs: torch.Tensor, pos: torch.Tensor, dates: List[str],
+                    inference_step_num: int, device: str,
+                    insitu_stats: torch.Tensor) -> torch.Tensor:
+    model.eval()
+    B = xs.shape[0]
+
+    ys = torch.randn(B, 1, device=device, dtype=xs.dtype)
+    scheduler.set_timesteps(inference_step_num)
+    insitu_stats = insitu_stats.to(device)
+
+    for timestep in scheduler.timesteps:
+        timesteps = torch.full((B,), timestep.item(), device=device, dtype=torch.long)
+        pred_x0 = model.forward(ys, xs, timesteps, pos=pos, dates=dates,
+                                insitu_stats=insitu_stats)
+        step_out = scheduler.step(model_output=pred_x0, timestep=timestep, sample=ys)
+        ys = step_out.prev_sample
+
+    return ys
 
 if __name__ == "__main__":
     main()

@@ -430,6 +430,13 @@ class InsituStore(TiffStore):
         super().__init__(base_dir, resolution)
 
 
+class PixelInferenceStore(TiffStore):
+
+    def __init__(self, resolution: str):
+        base_dir = PIXEL_INFERENCE_DIR_PATH
+        super().__init__(base_dir, resolution)
+
+
 class GridInfoStore(BaseDataStore[Dict]):
 
     def __init__(self, resolution: str):

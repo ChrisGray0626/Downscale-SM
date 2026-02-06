@@ -6,10 +6,7 @@
   @Date 2026/2/6
 """
 
-from typing import List
-
 import torch
-import torch.nn.functional as F
 from diffusers import DDPMScheduler
 from torch.utils.data import Dataset, DataLoader
 
@@ -37,6 +34,21 @@ LR = 2e-4
 # Early stopping setting
 PATIENCE = 5
 MIN_DELTA = 1e-6
+
+
+def diffusion_loss_x0_pixel(
+        pred_x0: torch.Tensor,
+        target_x0: torch.Tensor,
+        timesteps: torch.Tensor,
+        scheduler: DDPMScheduler,
+) -> torch.Tensor:
+    """SNR-weighted MSE for x0-prediction on pixel outputs (B, 1). All pixels are valid."""
+    mse_per_pix = (pred_x0 - target_x0) ** 2
+    alphas_cumprod = scheduler.alphas_cumprod.to(timesteps.device)
+    alpha_bar = alphas_cumprod[timesteps]
+    snr = alpha_bar / (1.0 - alpha_bar + 1e-8)
+    weights = (snr / (snr + 1.0)).view(-1, 1)
+    return (weights * mse_per_pix).mean()
 
 
 def main():
@@ -108,14 +120,19 @@ class Trainer:
                 timesteps=sampled_timesteps  # type: ignore[arg-type]
             )
 
-            pred_noise = self.model.forward(
+            # x0-prediction: model predicts clean sample x0
+            pred_x0 = self.model.forward(
                 diffused_ys, batch_xs, sampled_timesteps,
                 pos=batch_pos, dates=batch_dates,
                 insitu_stats=batch_insitu_stats
             )
 
-            diffusion_loss = F.mse_loss(pred_noise, noises)
-            loss = diffusion_loss
+            loss = diffusion_loss_x0_pixel(
+                pred_x0=pred_x0,
+                target_x0=batch_ys,
+                timesteps=sampled_timesteps,
+                scheduler=self.scheduler,
+            )
 
             total_loss += loss.item() * B
             total_samples += B
@@ -171,7 +188,7 @@ def build_scheduler() -> DDPMScheduler:
         beta_start=BETA_START,
         beta_end=BETA_END,
         beta_schedule="linear",
-        prediction_type="epsilon",
+        prediction_type="sample",  # x0-prediction, aligned with image DDPM
         clip_sample=False,
     )
 
@@ -182,28 +199,6 @@ def build_early_stopping() -> EarlyStopping:
         min_delta=MIN_DELTA,
         restore_best_weights=True
     )
-
-
-@torch.no_grad()
-def reverse_diffuse(model: NoisePredictorPixel, scheduler: DDPMScheduler,
-                    xs: torch.Tensor, pos: torch.Tensor, dates: List[str],
-                    inference_step_num: int, device: str,
-                    insitu_stats: torch.Tensor) -> torch.Tensor:
-    model.eval()
-    B = xs.shape[0]
-
-    ys = torch.randn(B, 1, device=device)
-    scheduler.set_timesteps(inference_step_num)
-
-    for timestep in scheduler.timesteps:
-        timesteps = torch.full((B,), timestep.item(), device=device, dtype=torch.long)
-        insitu_stats = insitu_stats.to(device)
-        pred_noises = model.forward(ys, xs, timesteps, pos=pos, dates=dates,
-                                    insitu_stats=insitu_stats)
-        step_out = scheduler.step(model_output=pred_noises, timestep=timestep, sample=ys)
-        ys = step_out.prev_sample
-
-    return ys
 
 
 if __name__ == "__main__":
