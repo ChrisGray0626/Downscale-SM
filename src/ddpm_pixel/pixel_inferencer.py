@@ -72,14 +72,17 @@ def inference(model: PixelNoisePredictor, dataset: DDPMPixelInferenceDataset, de
     pred_ys_list = []
     data_loader = DataLoader(dataset, batch_size=min(BATCH_SIZE, len(dataset)), shuffle=False)  # type: ignore[arg-type]
     insitu_stats = torch.from_numpy(dataset.insitu_stats).to(device).unsqueeze(0)
-    for batch_xs, batch_pos, batch_dates in tqdm(data_loader):
+    for batch_xs, batch_pos, batch_valid_mask, batch_dates in tqdm(data_loader):
         batch_xs = batch_xs.to(device)
         batch_pos = batch_pos.to(device)
+        batch_valid_mask = batch_valid_mask.to(device)
         B = batch_xs.shape[0]
         batch_insitu_stats = insitu_stats.expand(B, -1)
 
-        batch_pred_ys = reverse_diffuse(model, scheduler, batch_xs, batch_pos, batch_dates, INFERENCE_STEP_NUM,
-                                        device=device, insitu_stats=batch_insitu_stats)
+        batch_pred_ys = reverse_diffuse(
+            model, scheduler, batch_xs, batch_pos, batch_valid_mask, batch_dates,
+            INFERENCE_STEP_NUM, device=device, insitu_stats=batch_insitu_stats
+        )
         batch_pred_ys = batch_pred_ys.reshape(-1).cpu()
         pred_ys_list.append(batch_pred_ys)
 
@@ -89,7 +92,7 @@ def inference(model: PixelNoisePredictor, dataset: DDPMPixelInferenceDataset, de
 
 @torch.no_grad()
 def reverse_diffuse(model: PixelNoisePredictor, scheduler: DDPMScheduler,
-                    xs: torch.Tensor, pos: torch.Tensor, dates: List[str],
+                    xs: torch.Tensor, pos: torch.Tensor, valid_mask: torch.Tensor, dates: List[str],
                     inference_step_num: int, device: str,
                     insitu_stats: torch.Tensor) -> torch.Tensor:
     model.eval()
@@ -101,8 +104,12 @@ def reverse_diffuse(model: PixelNoisePredictor, scheduler: DDPMScheduler,
 
     for timestep in scheduler.timesteps:
         timesteps = torch.full((B,), timestep.item(), device=device, dtype=torch.long)
-        pred_x0 = model.forward(ys, xs, timesteps, pos=pos, dates=dates,
-                                insitu_stats=insitu_stats)
+        pred_x0 = model.forward(
+            ys, xs, timesteps,
+            pos=pos, dates=dates,
+            insitu_stats=insitu_stats,
+            valid_mask=valid_mask,
+        )
         step_out = scheduler.step(model_output=pred_x0, timestep=timestep, sample=ys)
         ys = step_out.prev_sample
 

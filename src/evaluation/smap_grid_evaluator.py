@@ -9,6 +9,7 @@
 import numpy as np
 
 from constants import *
+from datasets import store_factory
 from datasets.common_data_store import GridInfoStore, ModelDataStore
 from evaluation.evaluator import Evaluator
 from utils.date_util import get_valid_dates
@@ -57,12 +58,11 @@ def main():
 
 
 class SmapGridEvalDataset:
-    """Pred product vs SM reference at 36km on the same grid."""
 
     def __init__(self, product_name: str, resolution: str):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = build(product_name, resolution)
+        self.pred_store = store_factory.build(product_name, resolution)
         self.data_store = ModelDataStore(resolution=resolution)
         self.grid_info_store = GridInfoStore(resolution=resolution)
         self._grid_info = self.grid_info_store.get()

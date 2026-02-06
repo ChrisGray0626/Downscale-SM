@@ -26,7 +26,9 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
         self.input_feature_num = input_feature_num
         self.hidden_dim = hidden_dim
 
-        input_dim = input_feature_num + 1
+        # Use both normalized features and their valid mask as inputs, plus diffused y.
+        # inputs = [xs (F), diffused_y (1), valid_mask (F)] -> total 2F + 1.
+        input_dim = input_feature_num * 2 + 1
         self.input_layer = nn.Linear(input_dim, hidden_dim)
 
         # Timestep Embedding
@@ -85,8 +87,9 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
 
     def forward(self, diffused_ys: torch.Tensor, xs: torch.Tensor, timesteps: torch.Tensor,
                 pos: torch.Tensor, dates: List[str],
-                insitu_stats: torch.Tensor) -> torch.Tensor:
-        inputs = torch.cat([xs, diffused_ys], dim=1)
+                insitu_stats: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
+        # Concatenate normalized features, current diffused y, and per-feature valid mask.
+        inputs = torch.cat([xs, diffused_ys, valid_mask], dim=1)
         x = self.input_layer(inputs)
 
         # Embed Timestep

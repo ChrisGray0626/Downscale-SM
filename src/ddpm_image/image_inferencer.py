@@ -62,9 +62,10 @@ def inference(
     model = model.to(device)
     model.eval()
 
-    xs, dates, insitu_stats = dataset.get_all()
+    xs, date_str, insitu_stats = dataset.get_all()
     xs = xs.unsqueeze(0).to(device)
     insitu_stats = torch.from_numpy(insitu_stats).float().unsqueeze(0).to(device)
+    dates = [date_str]
 
     pred_y = reverse_diffuse(
         model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, insitu_stats=insitu_stats
