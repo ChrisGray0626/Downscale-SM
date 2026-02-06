@@ -5,8 +5,8 @@
   @Author Chris
   @Date 2026/1/27
 """
-from constants import ESA_CCI_NAME, RF_NAME, DDPM_NAME, GWR_NAME, RESNET_NAME, SM_NAME, IN_SITU_NAME
-from datasets.dataset import CorrectionResultStore, InferenceResultStore, SMAPStore, InsituStore
+from constants import ESA_CCI_NAME, RF_NAME, DDPM_NAME, GWR_NAME, RESNET_NAME, SM_NAME, IN_SITU_NAME, PIXEL_DDPM_NAME
+from datasets.dataset import CorrectionResultStore, InferenceResultStore, SMAPStore, InsituStore, PixelInferenceStore
 from esa_cci.esa_cci_dataset import ESACCIStore
 from gwr.gwr_dataset import GWRResultStore
 from resnet.resnet_dataset import ResNetResultStore
@@ -31,4 +31,6 @@ def build_pred_store(product_name, resolution, is_correction=False):
             return CorrectionResultStore(resolution=resolution)
         else:
             return InferenceResultStore(resolution=resolution)
+    elif product_name == PIXEL_DDPM_NAME:
+        return PixelInferenceStore(resolution=resolution)
     raise ValueError(f"Unknown product name: {product_name}")

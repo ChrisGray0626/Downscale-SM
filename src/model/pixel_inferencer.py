@@ -14,7 +14,7 @@ from tqdm import tqdm
 from constants import *
 from datasets.dataset import InferenceDataset, GridInfoStore
 from model.module import NoisePredictorPixel, build_device
-from model.trainer import build_scheduler, reverse_diffuse
+from model.pixel_trainer import build_scheduler, reverse_diffuse
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
@@ -53,7 +53,7 @@ def main():
 
 
 def build_model() -> NoisePredictorPixel:
-    model = NoisePredictorPixel.from_pretrained(DDPM_MODEL_PATH)
+    model = NoisePredictorPixel.from_pretrained(PIXEL_DDPM_MODEL_PATH)
 
     return model
 
