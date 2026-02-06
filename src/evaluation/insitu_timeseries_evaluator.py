@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 
 from constants import *
+from datasets import store_factory
 from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
-from evaluation.pred_store import build_pred_store
 
 PROD_NAMES = [DDPM_IMAGE_NAME]
 RESOLUTION = RESOLUTION_36KM
@@ -41,7 +41,10 @@ class InsituTimeseriesEvalDataset:
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()
-        self._pred_stores = {p: build_pred_store(p, self.resolution, is_correction=True) for p in self.prod_names}
+        self._pred_stores = {
+            p: store_factory.build(p, self.resolution, is_correction=True)
+            for p in self.prod_names
+        }
 
     @property
     def _dates(self) -> list:

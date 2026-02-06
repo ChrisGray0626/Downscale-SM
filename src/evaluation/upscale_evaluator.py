@@ -10,9 +10,9 @@ import numpy as np
 from rasterio.warp import reproject, Resampling
 
 from constants import *
+from datasets import store_factory
 from datasets.common_data_store import ModelDataStore, GridInfoStore
 from evaluation.evaluator import Evaluator
-from evaluation.pred_store import build_pred_store
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
@@ -33,7 +33,7 @@ def main():
     evaluator = Evaluator()
 
     for method_name in PROD_NAMES:
-        pred_store_1km = build_pred_store(method_name, resolution=RESOLUTION_1KM)
+        pred_store_1km = store_factory.build(method_name, resolution=RESOLUTION_1KM)
 
         all_pred, all_true, all_masks, all_dates = [], [], [], []
         for date in dates:

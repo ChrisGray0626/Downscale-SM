@@ -24,7 +24,7 @@ from utils.raster_util import write_tiff
 INFERENCE_STEP_NUM = 250
 SM_MIN = 0.02
 SM_MAX = 0.5
-RESOLUTION = RESOLUTION_36KM
+RESOLUTION = RESOLUTION_1KM
 
 
 def main():

@@ -11,7 +11,6 @@ import numpy as np
 from constants import *
 from datasets.common_data_store import GridInfoStore, ModelDataStore
 from evaluation.evaluator import Evaluator
-from evaluation.pred_store import build_pred_store
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
@@ -63,7 +62,7 @@ class SmapGridEvalDataset:
     def __init__(self, product_name: str, resolution: str):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = build_pred_store(product_name, resolution)
+        self.pred_store = build(product_name, resolution)
         self.data_store = ModelDataStore(resolution=resolution)
         self.grid_info_store = GridInfoStore(resolution=resolution)
         self._grid_info = self.grid_info_store.get()
