@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description In-situ vs gridded product evaluation on reference grid
+  @Description Evaluation of In-situ vs Product
   @Author Chris
   @Date 2026/1/27
 """
@@ -9,16 +9,18 @@
 import numpy as np
 
 from constants import *
-from datasets import store_factory
+from datasets import data_store_factory
 from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 
 PROD_NAMES = [
     DDPM_IMAGE_NAME,
+    DDPM_PIXEL_NAME,
     RF_NAME,
-    GWR_NAME,
     RESNET_NAME,
-    SM_NAME,
+    ESA_CCI_NAME,
+    # SM_NAME,
+    # GWR_NAME,
 ]
 RESOLUTIONS = [
     RESOLUTION_36KM,
@@ -53,7 +55,8 @@ def main():
             df_date.to_csv(dst_file_path, index=False)
 
             evaluator.evaluate_by_spatial_distribution(
-                df_site, height=grid_info["H"], width=grid_info["W"]
+                df_site, height=grid_info["H"], width=grid_info["W"],
+                title=f"{resolution} {product_name} vs InSitu Data",
             )
 
 
@@ -61,7 +64,7 @@ class InsituGridEvalDataset:
     def __init__(self, product_name, resolution):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = store_factory.build(product_name, resolution, is_correction=True)
+        self.pred_store = data_store_factory.build(product_name, resolution, is_correction=True)
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()

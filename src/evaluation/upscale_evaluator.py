@@ -10,16 +10,17 @@ import numpy as np
 from rasterio.warp import reproject, Resampling
 
 from constants import *
-from datasets import store_factory
+from datasets import data_store_factory
 from datasets.common_data_store import ModelDataStore, GridInfoStore
 from evaluation.evaluator import Evaluator
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
     DDPM_IMAGE_NAME,
+    DDPM_PIXEL_NAME,
     RF_NAME,
-    GWR_NAME,
     RESNET_NAME,
+    GWR_NAME,
 ]
 
 
@@ -33,7 +34,7 @@ def main():
     evaluator = Evaluator()
 
     for method_name in PROD_NAMES:
-        pred_store_1km = store_factory.build(method_name, resolution=RESOLUTION_1KM)
+        pred_store_1km = data_store_factory.build(method_name, resolution=RESOLUTION_1KM)
 
         all_pred, all_true, all_masks, all_dates = [], [], [], []
         for date in dates:
@@ -64,7 +65,10 @@ def main():
         out_site_csv = os.path.join(RESULT_DIR_PATH, f"Evaluation_Upscale_{method_name}_By_Site.csv")
         df_site.to_csv(out_site_csv, index=False)
 
-        evaluator.evaluate_by_spatial_distribution(df_site, height=H, width=W)
+        evaluator.evaluate_by_spatial_distribution(
+            df_site, height=H, width=W,
+            title=f"Upscale {method_name} (1km -> 36km)",
+        )
 
 
 def upscale_to_36km(src_data: np.ndarray, src_grid_info: dict, dst_grid_info: dict) -> np.ndarray:

@@ -13,7 +13,8 @@ ZIP_SUFFIX = ".zip"
 # 空间范围：Left Bottom Right Top
 RANGE = [-120, 35, -104, 49]
 
-
+SM_MIN = 0.02
+SM_MAX = 0.5
 # 基础路径
 PROJ_PATH = os.getenv("PROJ_PATH") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKPOINT_DIR_PATH = os.path.join(PROJ_PATH, "CHECKPOINTS")
@@ -42,12 +43,13 @@ PROJ_Y_NAME = "ProjY"
 ROW_NAME = "Row"
 COL_NAME = "Col"
 DATA_NAME = "Data"
+SM_NAME = "SM"
 NDVI_NAME = "NDVI"
 LST_NAME = "LST"
-SM_NAME = "SM"
 ALBEDO_NAME = "Albedo"
 PRECIPITATION_NAME = "Precipitation"
 DEM_NAME = "DEM"
+AUX_FEAT_NAMES = [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]
 IN_SITU_NAME = "InSitu"
 ESA_CCI_NAME = "ESA-CCI"
 SMAP_HB_NAME = "SMAP-HB"

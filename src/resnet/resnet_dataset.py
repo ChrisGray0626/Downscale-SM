@@ -11,7 +11,7 @@ import torch
 
 from constants import *
 from datasets.base_data_store import BaseTiffStore
-from datasets.base_dataset import BaseInferenceDataset, BaseTrainDataset, FEATURE_NAMES
+from datasets.base_dataset import BaseInferenceDataset, BaseTrainDataset, AUX_FEAT_NAMES
 
 MIN_VALID_RATIO = 0.5
 
@@ -56,7 +56,7 @@ class ResNetInferenceDataset(BaseInferenceDataset):
         self.rows_full = grid_info["rows"].flatten()
         self.cols_full = grid_info["cols"].flatten()
         xs = np.stack(
-            [self.data_store.get(name, self.date) for name in FEATURE_NAMES],
+            [self.data_store.get(name, self.date) for name in AUX_FEAT_NAMES],
             axis=-1,
         )
         self.xs = xs.astype(np.float32)  # (H, W, 5)

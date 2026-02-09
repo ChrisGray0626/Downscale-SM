@@ -164,7 +164,7 @@ class Evaluator:
         }
 
     def evaluate_by_spatial_distribution(self, df_site_results: pd.DataFrame, height: int, width: int,
-                                         figsize: tuple = (16, 6)):
+                                         figsize: tuple = (16, 6), title: str = None):
         rows = df_site_results['Row'].values
         cols = df_site_results['Col'].values
         error_values = df_site_results['Corr_ubRMSE'].values
@@ -205,6 +205,8 @@ class Evaluator:
             ax2.set_ylabel('Row Index')
             plt.colorbar(im2, ax=ax2, label='R')
 
+        if title:
+            fig.suptitle(title, fontsize=14)
         plt.tight_layout()
         plt.show()
 

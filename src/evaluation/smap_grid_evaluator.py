@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Gridded product vs SM (36km reference) evaluation on reference grid
+  @Description Evaluation of Product vs SMAP (36km)
   @Author Chris
   @Date 2026/2/2
 """
@@ -9,18 +9,18 @@
 import numpy as np
 
 from constants import *
-from datasets import store_factory
+from datasets import data_store_factory
 from datasets.common_data_store import GridInfoStore, ModelDataStore
 from evaluation.evaluator import Evaluator
 from utils.date_util import get_valid_dates
 
 PROD_NAMES = [
-    IN_SITU_NAME,
     DDPM_IMAGE_NAME,
     DDPM_PIXEL_NAME,
     RF_NAME,
-    GWR_NAME,
     RESNET_NAME,
+    # GWR_NAME,
+    IN_SITU_NAME,
 ]
 RESOLUTION = RESOLUTION_36KM
 
@@ -53,7 +53,8 @@ def main():
         df_site.to_csv(dst_file_path, index=False)
 
         evaluator.evaluate_by_spatial_distribution(
-            df_site, height=grid_info["H"], width=grid_info["W"]
+            df_site, height=grid_info["H"], width=grid_info["W"],
+            title=f"{RESOLUTION} {product_name} vs SMAP Data",
         )
 
 
@@ -62,7 +63,7 @@ class SmapGridEvalDataset:
     def __init__(self, product_name: str, resolution: str):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = store_factory.build(product_name, resolution)
+        self.pred_store = data_store_factory.build(product_name, resolution)
         self.data_store = ModelDataStore(resolution=resolution)
         self.grid_info_store = GridInfoStore(resolution=resolution)
         self._grid_info = self.grid_info_store.get()

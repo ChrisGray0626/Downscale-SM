@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  Common train/inference datasets with full variable set (grid, lons, lats, features, SM).
-  get_all: for pixel-level methods, returns all elements; inherit and extract what the method needs.
-  __getitem__: left to subclasses (e.g. RF) to define.
+  @Description Base Dataset for Training and Inference
   @Author Chris
   @Date 2026/1/30
 """
@@ -20,8 +18,6 @@ __all__ = [
     "BaseTrainDataset",
     "BaseInferenceDataset",
 ]
-
-FEATURE_NAMES = [NDVI_NAME, LST_NAME, ALBEDO_NAME, PRECIPITATION_NAME, DEM_NAME]
 
 
 class BaseTrainDataset(Dataset):
@@ -67,7 +63,7 @@ class BaseTrainDataset(Dataset):
 
         xs_list, ys_list = [], []
         for date in dates:
-            xs_date = np.stack([self.data_store.get(name, date) for name in FEATURE_NAMES], axis=-1, )
+            xs_date = np.stack([self.data_store.get(name, date) for name in AUX_FEAT_NAMES], axis=-1, )
             ys_date = self.data_store.get(SM_NAME, date)
             xs_list.append(xs_date)
             ys_list.append(ys_date)
@@ -174,7 +170,7 @@ class BaseInferenceDataset(Dataset):
         self.rows = grid_info["rows"]
         self.cols = grid_info["cols"]
         xs = np.stack(
-            [self.data_store.get(name, self.date) for name in FEATURE_NAMES],
+            [self.data_store.get(name, self.date) for name in AUX_FEAT_NAMES],
             axis=-1,
         )
         self.xs = xs.astype(np.float32)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description In-situ Time Series Evaluation
+  @Description Evaluation of In-situ Time Series
   @Author Chris
   @Date 2026/1/27
 """
@@ -12,14 +12,20 @@ import numpy as np
 import pandas as pd
 
 from constants import *
-from datasets import store_factory
+from datasets import data_store_factory
 from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
 
-PROD_NAMES = [DDPM_IMAGE_NAME]
-RESOLUTION = RESOLUTION_36KM
+PROD_NAMES = [
+    DDPM_PIXEL_NAME,
+    DDPM_IMAGE_NAME,
+    # ESA_CCI_NAME,
+    RF_NAME,
+    RESNET_NAME,
+]
+RESOLUTION = RESOLUTION_1KM
 EVALUATION_DIR_PATH = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_TimeSeries_{RESOLUTION}")
-MIN_VALID_DATES = 300
+MIN_VALID_DATES = 20
 
 
 def main():
@@ -42,7 +48,7 @@ class InsituTimeseriesEvalDataset:
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()
         self._pred_stores = {
-            p: store_factory.build(p, self.resolution, is_correction=True)
+            p: data_store_factory.build(p, self.resolution, is_correction=True)
             for p in self.prod_names
         }
 
