@@ -51,7 +51,7 @@ def main():
 
     os.makedirs(os.path.dirname(GWR_MODEL_PATH), exist_ok=True)
     with open(GWR_MODEL_PATH, "wb") as f:
-        pickle.dump(model, f)  # type: ignore[arg-type]
+        pickle.dump((model, results.scale, results.resid_response), f)  # type: ignore[arg-type]
 
 
 def search_bw(lons, lats, ys, xs):
