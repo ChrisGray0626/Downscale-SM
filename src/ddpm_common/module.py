@@ -39,11 +39,20 @@ class SinusoidalPosEmb(nn.Module):
 
 class TimeEmbedding(nn.Module):
 
-    def __init__(self, hidden_dim: int, num_fourier: int = 8, max_doy: int = 366):
+    def __init__(
+            self,
+            hidden_dim: int,
+            num_fourier: int = 8,
+            max_doy: int = 366,
+            year_min: int = 2016,
+            year_max: int = 2020,
+    ):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.num_fourier = num_fourier
         self.max_doy = max_doy
+        self.year_min = float(year_min)
+        self.year_max = float(year_max)
         self.doy_dim = 2
         self.year_dim = 1
         self.fourier_dim = 2 * num_fourier
@@ -70,9 +79,7 @@ class TimeEmbedding(nn.Module):
         doy_emb = torch.stack([torch.sin(2 * torch.pi * doy_norm), torch.cos(2 * torch.pi * doy_norm)], dim=1)
         emb_list.append(doy_emb)
 
-        year_min = year.min().item() if len(year) > 0 else 2016
-        year_max = year.max().item() if len(year) > 0 else 2020
-        year_norm = (year - year_min) / max(year_max - year_min, 1.0)
+        year_norm = (year - self.year_min) / max(self.year_max - self.year_min, 1.0)
         emb_list.append(year_norm.unsqueeze(1))
 
         base_year = 2016
