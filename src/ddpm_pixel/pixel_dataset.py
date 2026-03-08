@@ -12,7 +12,6 @@ import torch
 from constants import RESOLUTION_36KM, DDPM_PIXEL_INFERENCE_DIR_PATH, DDPM_PIXEL_CORRECTION_DIR_PATH
 from datasets.base_data_store import BaseTiffStore
 from datasets.base_dataset import BaseInferenceDataset, BaseTrainDataset
-from datasets.common_data_store import InsituStatsStore
 
 
 class DDPMPixelTrainDataset(BaseTrainDataset):
@@ -20,7 +19,6 @@ class DDPMPixelTrainDataset(BaseTrainDataset):
     def __init__(self):
         # Keep all pixels after normalization/flattening; we'll handle NaNs ourselves.
         super().__init__(flat=True, filter_valid=False)
-        self.insitu_stats_store = InsituStatsStore(resolution=self.resolution)
 
         # xs, ys are normalized at this point.
         # Build per-feature valid mask BEFORE imputation: True where original xs was not NaN.
@@ -48,17 +46,14 @@ class DDPMPixelTrainDataset(BaseTrainDataset):
         pos = self.pos[idx].astype(np.float32)
         xs = self.xs[idx].astype(np.float32)
         ys = np.asarray(self.ys[idx], dtype=np.float32)
-        insitu_stats = self.insitu_stats_store.get(date)
         valid_mask = self.xs_valid_mask[idx].astype(np.float32)
 
         xs_t = torch.from_numpy(xs)
         ys_t = torch.tensor(ys, dtype=torch.float32)
         pos_t = torch.from_numpy(pos)
-        insitu_stats_t = torch.from_numpy(insitu_stats.astype(np.float32))
         valid_mask_t = torch.from_numpy(valid_mask)
 
-        # Order is aligned with Trainer loop: (dates, pos, xs, ys, insitu_stats, valid_mask)
-        return date, pos_t, xs_t, ys_t, insitu_stats_t, valid_mask_t
+        return date, pos_t, xs_t, ys_t, valid_mask_t
 
 
 class DDPMPixelInferenceDataset(BaseInferenceDataset):
@@ -66,8 +61,6 @@ class DDPMPixelInferenceDataset(BaseInferenceDataset):
     def __init__(self, date: str, resolution: str = RESOLUTION_36KM):
         self.date = date
         self.resolution = resolution
-        self.insitu_stats_store = InsituStatsStore(resolution=self.resolution)
-        self.insitu_stats = self.insitu_stats_store.get(self.date)
 
         # For DDPM-based inference we want a value for every pixel:
         # - do NOT drop invalid pixels (filter_valid=False)

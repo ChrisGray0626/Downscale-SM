@@ -130,7 +130,7 @@ class SpatialEmbedding(nn.Module):
 
 class InsituStatsEmbedding(nn.Module):
 
-    def __init__(self, hidden_dim: int, stats_dim: int = 4):
+    def __init__(self, hidden_dim: int, stats_dim: int):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.stats_dim = stats_dim

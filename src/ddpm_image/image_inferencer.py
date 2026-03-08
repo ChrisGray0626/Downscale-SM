@@ -21,10 +21,12 @@ from ddpm_image.image_trainer import build_scheduler
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
-INFERENCE_STEP_NUM = 250
+INFERENCE_STEP_NUM = 50
+INFERENCE_SEED = 42
 SM_MIN = 0.02
 SM_MAX = 0.5
 RESOLUTION = RESOLUTION_1KM
+APPLY_OUTPUT_CLIP = True
 
 
 def main():
@@ -38,11 +40,10 @@ def main():
 
     for date in tqdm(get_valid_dates(), desc="Inference"):
         dataset = DDPMImageInferenceDataset(date=date, resolution=RESOLUTION)
-        # Inference (normalized prediction on grid)
         pred_y = inference(model=model, dataset=dataset, device=device, scheduler=scheduler)
-        # Denormalize to physical scale
         pred_y = dataset.denorm_y(pred_y.cpu().numpy())
-        pred_y = np.clip(pred_y, SM_MIN, SM_MAX)
+        if APPLY_OUTPUT_CLIP:
+            pred_y = np.clip(pred_y, SM_MIN, SM_MAX)
 
         dst_file_path = os.path.join(dst_dir_path, f"{date}{TIFF_SUFFIX}")
         write_tiff(pred_y, dst_file_path, transform=grid_info["transform"], crs=grid_info["crs"])
@@ -62,13 +63,12 @@ def inference(
     model = model.to(device)
     model.eval()
 
-    xs, date_str, insitu_stats = dataset.get_all()
+    xs, date_str = dataset.get_all()
     xs = xs.unsqueeze(0).to(device)
-    insitu_stats = torch.from_numpy(insitu_stats).float().unsqueeze(0).to(device)
     dates = [date_str]
 
     pred_y = reverse_diffuse(
-        model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, insitu_stats=insitu_stats
+        model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, INFERENCE_SEED
     )
     pred_y = pred_y.squeeze(0).squeeze(0)
     return pred_y
@@ -82,18 +82,16 @@ def reverse_diffuse(
         dates: List[str],
         inference_step_num: int,
         device: str,
-        insitu_stats: torch.Tensor,
+        seed: int,
 ) -> torch.Tensor:
     model.eval()
     B, _, H, W = xs.shape
-    ys = torch.randn(B, 1, H, W, device=device, dtype=xs.dtype)
+    generator = torch.Generator().manual_seed(seed)
+    ys = torch.randn(B, 1, H, W, dtype=xs.dtype, generator=generator).to(device)
     scheduler.set_timesteps(inference_step_num)
-    insitu_stats = insitu_stats.to(device)
-
     for timestep in scheduler.timesteps:
         timesteps = torch.full((B,), timestep.item(), device=device, dtype=torch.long)
-        # x0-prediction: ddpm_image outputs x0, scheduler.step expects x0 when prediction_type='sample'
-        pred_x0 = model.forward(ys, xs, timesteps, dates=dates, insitu_stats=insitu_stats)
+        pred_x0 = model.forward(ys, xs, timesteps, dates=dates)
         step_out = scheduler.step(model_output=pred_x0, timestep=timestep, sample=ys)
         ys = step_out.prev_sample
 

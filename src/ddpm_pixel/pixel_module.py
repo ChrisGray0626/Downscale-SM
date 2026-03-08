@@ -13,7 +13,7 @@ from diffusers.configuration_utils import register_to_config
 from torch import nn
 
 from constants import RANGE
-from ddpm_common.module import SinusoidalPosEmb, TimeEmbedding, SpatialEmbedding, InsituStatsEmbedding
+from ddpm_common.module import SinusoidalPosEmb, TimeEmbedding, SpatialEmbedding
 
 
 class PixelNoisePredictor(ModelMixin, ConfigMixin):
@@ -57,15 +57,9 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
             lat_max=lat_max
         )
 
-        # Insitu Stats Embedding
-        self.insitu_stats_embedding = InsituStatsEmbedding(
-            hidden_dim=hidden_dim,
-            stats_dim=4
-        )
-
         # Condition Fusion
         self.condition_fusion = nn.Sequential(
-            nn.Linear(hidden_dim * 4, hidden_dim * 2),
+            nn.Linear(hidden_dim * 3, hidden_dim * 2),
             nn.SiLU(),
             nn.Linear(hidden_dim * 2, hidden_dim)
         )
@@ -87,7 +81,7 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
 
     def forward(self, diffused_ys: torch.Tensor, xs: torch.Tensor, timesteps: torch.Tensor,
                 pos: torch.Tensor, dates: List[str],
-                insitu_stats: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
+                valid_mask: torch.Tensor) -> torch.Tensor:
         # Concatenate normalized features, current diffused y, and per-feature valid mask.
         inputs = torch.cat([xs, diffused_ys, valid_mask], dim=1)
         x = self.input_layer(inputs)
@@ -102,11 +96,8 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
         # Embed Spatial
         embed_spatial = self.spatial_embedding(pos)
 
-        # Embed Insitu Stats
-        embed_insitu_stats = self.insitu_stats_embedding(insitu_stats)
-
         # Fuse Condition
-        condition = torch.cat([embed_timesteps, embed_time, embed_spatial, embed_insitu_stats], dim=1)
+        condition = torch.cat([embed_timesteps, embed_time, embed_spatial], dim=1)
         condition = self.condition_fusion(condition)
 
         # Residual Blocks with FiLM

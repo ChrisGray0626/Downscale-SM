@@ -80,11 +80,10 @@ class Trainer:
         total_loss = 0.0
         total_samples = 0
 
-        for batch_dates, batch_pos, batch_xs, batch_ys, batch_insitu_stats, batch_valid_mask in data_loader:
+        for batch_dates, batch_pos, batch_xs, batch_ys, batch_valid_mask in data_loader:
             batch_pos = batch_pos.to(self.device)
             batch_xs = batch_xs.to(self.device)
             batch_ys = batch_ys.to(self.device).unsqueeze(1)
-            batch_insitu_stats = batch_insitu_stats.to(self.device)
             batch_valid_mask = batch_valid_mask.to(self.device)
 
             B = batch_xs.shape[0]
@@ -104,7 +103,6 @@ class Trainer:
             pred_ys = self.model.forward(
                 diffused_ys, batch_xs, sampled_timesteps,
                 pos=batch_pos, dates=batch_dates,
-                insitu_stats=batch_insitu_stats,
                 valid_mask=batch_valid_mask,
             )
 
