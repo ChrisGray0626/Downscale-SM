@@ -144,7 +144,6 @@ class InsituStatsStore(BaseDataStore[np.ndarray]):
         super().__init__()
         self.resolution = resolution
         self.insitu_store = InsituStore(resolution=self.resolution)
-        self.data_store = ModelDataStore(resolution=self.resolution)
 
     def get(self, date: str, cache_used: bool = True) -> np.ndarray:
         return self._get(date, lambda: self._load(date), cache_used=cache_used)
@@ -157,7 +156,7 @@ class InsituStatsStore(BaseDataStore[np.ndarray]):
     @staticmethod
     def _calc_insitu_stats_from_data(insitus: np.ndarray) -> np.ndarray:
         valid_insitu = insitus[~np.isnan(insitus)]
-        if len(valid_insitu) > 0:
+        if valid_insitu.size > 0:
             insitu_stats = np.array([
                 np.mean(valid_insitu),
                 np.std(valid_insitu),
