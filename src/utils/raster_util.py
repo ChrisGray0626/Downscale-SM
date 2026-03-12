@@ -13,14 +13,11 @@ import pandas as pd
 import rasterio
 from affine import Affine
 from matplotlib import pyplot as plt
-from osgeo import gdal
 from pyproj import CRS, Transformer
 from rasterio.transform import rowcol
 from rasterio.warp import transform_bounds, reproject, Resampling
 
 from constants import *
-
-gdal.UseExceptions()
 
 
 def read_tiff_meta(grid_path: str) -> Tuple[Affine, CRS, int, int]:
@@ -67,6 +64,9 @@ def read_tiff(file_path: str, dst_epsg_code: int = 4326):
 
 
 def merge_tiff(dst_file_path: str, src_dir_path: str = None, src_file_paths: list = None):
+    from osgeo import gdal
+    gdal.UseExceptions()
+
     if src_dir_path is None and src_file_paths is None:
         raise ValueError("Either src_dir_path or src_file_paths must be provided.")
     # 如果提供了 src_file_paths，则忽略 src_dir_path

@@ -20,7 +20,7 @@ PROD_NAMES = [
     DDPM_PIXEL_NAME,
     RF_NAME,
     RESNET_NAME,
-    GWR_NAME,
+    # GWR_NAME,
 ]
 
 

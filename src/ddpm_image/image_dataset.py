@@ -49,7 +49,10 @@ class DDPMImageTrainDataset(BaseTrainDataset):
         coords = self._coords
         x_valid_mask = np.isfinite(x).all(axis=-1, keepdims=True).astype(np.float32)
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
-        x = np.concatenate([x.astype(np.float32), coords, x_valid_mask], axis=-1)
+        x = np.concatenate(
+            [x.astype(np.float32), coords, x_valid_mask],
+            axis=-1,
+        )
         x = torch.from_numpy(x).permute(2, 0, 1)
         y = torch.from_numpy(np.nan_to_num(y, nan=0.0).astype(np.float32)).unsqueeze(0)
         valid = torch.from_numpy(valid.astype(np.float32)).unsqueeze(0)
@@ -66,7 +69,10 @@ class DDPMImageInferenceDataset(BaseInferenceDataset):
         coords = self._coords
         x_valid_mask = np.isfinite(self.xs).all(axis=-1, keepdims=True).astype(np.float32)
         xs = np.nan_to_num(self.xs, nan=0.0, posinf=0.0, neginf=0.0)
-        xs = np.concatenate([xs.astype(np.float32), coords, x_valid_mask], axis=-1)
+        xs = np.concatenate(
+            [xs.astype(np.float32), coords, x_valid_mask],
+            axis=-1,
+        )
         xs = torch.from_numpy(xs).permute(2, 0, 1)
         return xs, self.date
 

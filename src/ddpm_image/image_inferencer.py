@@ -5,6 +5,7 @@
 @Author Chris
 @Date 2025/12/12
 """
+from datetime import datetime
 from typing import List
 
 import numpy as np
@@ -21,8 +22,8 @@ from ddpm_image.image_trainer import build_scheduler
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
 
-INFERENCE_STEP_NUM = 50
-INFERENCE_SEED = 42
+INFERENCE_STEP_NUM = 100
+BASE_INFERENCE_SEED = 42
 SM_MIN = 0.02
 SM_MAX = 0.5
 RESOLUTION = RESOLUTION_1KM
@@ -66,12 +67,17 @@ def inference(
     xs, date_str = dataset.get_all()
     xs = xs.unsqueeze(0).to(device)
     dates = [date_str]
+    inference_seed = build_inference_seed(date_str)
 
     pred_y = reverse_diffuse(
-        model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, INFERENCE_SEED
+        model, scheduler, xs, dates, INFERENCE_STEP_NUM, device, inference_seed
     )
-    pred_y = pred_y.squeeze(0).squeeze(0)
-    return pred_y
+    return pred_y.squeeze(0).squeeze(0)
+
+
+def build_inference_seed(date_str: str) -> int:
+    date_value = int(datetime.strptime(date_str, "%Y%m%d").strftime("%Y%m%d"))
+    return (BASE_INFERENCE_SEED + date_value) % (2 ** 31 - 1)
 
 
 @torch.no_grad()

@@ -26,6 +26,7 @@ RESOLUTIONS = [
     RESOLUTION_36KM,
     RESOLUTION_1KM,
 ]
+IS_CORRECT = False
 
 
 def main():
@@ -52,7 +53,7 @@ def main():
             dst_file_path = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_By_Site_{resolution}",
                                          f"{product_name}.csv")
             os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
-            df_date.to_csv(dst_file_path, index=False)
+            df_site.to_csv(dst_file_path, index=False)
 
             evaluator.evaluate_by_spatial_distribution(
                 df_site, height=grid_info["H"], width=grid_info["W"],
@@ -64,7 +65,7 @@ class InsituGridEvalDataset:
     def __init__(self, product_name, resolution):
         self.product_name = product_name
         self.resolution = resolution
-        self.pred_store = data_store_factory.build(product_name, resolution, is_correction=True)
+        self.pred_store = data_store_factory.build(product_name, resolution, is_correction=IS_CORRECT)
         self.insitu_store = InsituStore(resolution=self.resolution)
         self.grid_info_store = GridInfoStore(resolution=self.resolution)
         self._grid_info = self.grid_info_store.get()

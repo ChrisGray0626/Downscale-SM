@@ -213,7 +213,7 @@ def compute_loss(
         timesteps: torch.Tensor,
         scheduler: DDPMScheduler,
 ) -> torch.Tensor:
-    loss_recon = _reconstruction_loss(
+    loss_reconstruction = _reconstruction_loss(
         pred_x0=pred_y,
         target_x0=target_y,
         valid=valid,
@@ -231,7 +231,7 @@ def compute_loss(
         valid=valid,
     )
     return (
-            loss_recon
+            loss_reconstruction
             + LAMBDA_SCALE * loss_scale
             + LAMBDA_PATTERN * loss_pattern
     )

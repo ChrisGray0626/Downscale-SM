@@ -50,7 +50,7 @@ class PixelNoisePredictor(ModelMixin, ConfigMixin):
         lon_min, lat_min, lon_max, lat_max = RANGE
         self.spatial_embedding = SpatialEmbedding(
             hidden_dim=hidden_dim,
-            num_fourier=6,
+            num_fourier=2,
             lon_min=lon_min,
             lon_max=lon_max,
             lat_min=lat_min,
