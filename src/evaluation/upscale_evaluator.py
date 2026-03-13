@@ -33,8 +33,8 @@ def main():
     dates = get_valid_dates()
     evaluator = Evaluator()
 
-    for method_name in PROD_NAMES:
-        pred_store_1km = data_store_factory.build(method_name, resolution=RESOLUTION_1KM)
+    for prod_name in PROD_NAMES:
+        pred_store_1km = data_store_factory.build(prod_name, resolution=RESOLUTION_1KM)
 
         all_pred, all_true, all_masks, all_dates = [], [], [], []
         for date in dates:
@@ -54,20 +54,22 @@ def main():
         rows = np.tile(grid_info_36km["rows"].reshape(-1), len(dates)).astype(np.int32)
         cols = np.tile(grid_info_36km["cols"].reshape(-1), len(dates)).astype(np.int32)
 
-        title = f"Overall Evaluation: Upscale {method_name} (1km -> 36km)"
+        title = f"Overall Evaluation: Upscale {prod_name} (1km -> 36km)"
         evaluator.print_overall(pred, true, masks, title=title)
 
         df_date = evaluator.evaluate_by_date(pred, true, masks, all_dates)
-        out_date_csv = os.path.join(RESULT_DIR_PATH, f"Evaluation_Upscale_{method_name}_By_Date.csv")
+        out_date_csv = os.path.join(RESULT_DIR_PATH, f"Evaluation_Upscale_By_Date", f"{prod_name}.csv")
+        os.makedirs(os.path.dirname(out_date_csv), exist_ok=True)
         df_date.to_csv(out_date_csv, index=False)
 
         df_site = evaluator.evaluate_by_site(pred, true, masks, all_dates, rows, cols)
-        out_site_csv = os.path.join(RESULT_DIR_PATH, f"Evaluation_Upscale_{method_name}_By_Site.csv")
+        out_site_csv = os.path.join(RESULT_DIR_PATH, f"Evaluation_Upscale_By_Site", f"{prod_name}.csv")
+        os.makedirs(os.path.dirname(out_site_csv), exist_ok=True)
         df_site.to_csv(out_site_csv, index=False)
 
         evaluator.evaluate_by_spatial_distribution(
             df_site, height=H, width=W,
-            title=f"Upscale {method_name} (1km -> 36km)",
+            title=f"Upscale {prod_name} (1km -> 36km)",
         )
 
 

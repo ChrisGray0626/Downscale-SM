@@ -17,9 +17,6 @@ from ddpm_common.module import build_device, EarlyStopping
 from ddpm_pixel.pixel_dataset import DDPMPixelTrainDataset
 from ddpm_pixel.pixel_module import PixelNoisePredictor
 
-# Dataset setting
-INPUT_FEATURE_NUM = 6
-
 # Diffusion setting
 STEP_TOTAL_NUM = 1000
 BETA_START = 1e-4
@@ -47,6 +44,7 @@ MIN_DELTA = 1e-6
 def main():
     seed_everything(SEED)
     dataset = DDPMPixelTrainDataset()
+    input_feature_num = int(dataset.xs.shape[1])
     train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(
@@ -55,7 +53,7 @@ def main():
     )
 
     model = PixelNoisePredictor(
-        input_feature_num=INPUT_FEATURE_NUM,
+        input_feature_num=input_feature_num,
         hidden_dim=HIDDEN_DIM,
         timestep_emb_dim=TIMESTEP_EMB_DIM,
         res_block_num=RES_BLOCK_NUM,

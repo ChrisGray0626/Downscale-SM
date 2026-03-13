@@ -12,53 +12,52 @@ from constants import *
 from datasets import data_store_factory
 from datasets.common_data_store import GridInfoStore, InsituStore
 from evaluation.evaluator import Evaluator
+from utils.date_util import filter_dates_by_years
 
-PROD_NAMES = [
-    DDPM_IMAGE_NAME,
-    DDPM_PIXEL_NAME,
-    RF_NAME,
-    RESNET_NAME,
-    ESA_CCI_NAME,
-    # SM_NAME,
-    # GWR_NAME,
-]
-RESOLUTIONS = [
-    RESOLUTION_36KM,
-    RESOLUTION_1KM,
-]
+PROD_RESOLUTIONS = {
+    DDPM_IMAGE_NAME: [RESOLUTION_36KM, RESOLUTION_1KM],
+    DDPM_PIXEL_NAME: [RESOLUTION_36KM, RESOLUTION_1KM],
+    RF_NAME: [RESOLUTION_36KM, RESOLUTION_1KM],
+    RESNET_NAME: [RESOLUTION_36KM, RESOLUTION_1KM],
+    ESA_CCI_NAME: [RESOLUTION_36KM],
+    SM_NAME: [RESOLUTION_36KM],
+    GWR_NAME: [RESOLUTION_36KM, RESOLUTION_1KM],
+}
 IS_CORRECT = False
+EVAL_YEARS = ("2017",)
 
 
 def main():
     evaluator = Evaluator(min_site_num=2, min_date_num=2)
 
-    for resolution in RESOLUTIONS:
-        for product_name in PROD_NAMES:
-            dataset = InsituGridEvalDataset(product_name, resolution=resolution)
+    for prod_name, resolutions in PROD_RESOLUTIONS.items():
+        for resolution in resolutions:
+            dataset = InsituGridEvalDataset(prod_name, resolution=resolution)
             pred_map, insitu_map, insitu_masks, dates, rows, cols = dataset.get_all()
             grid_info = dataset.grid_info
 
-            title = f"Overall Evaluation: {resolution} {product_name} vs InSitu Data"
+            title = f"Overall Evaluation: {resolution} {prod_name} vs InSitu Data"
             evaluator.print_overall(pred_map, insitu_map, insitu_masks, title=title)
 
             df_date = evaluator.evaluate_by_date(pred_map, insitu_map, insitu_masks, dates)
 
             dst_file_path = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_By_Date_{resolution}",
-                                         f"{product_name}.csv")
+                                         f"{prod_name}.csv")
             os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
             df_date.to_csv(dst_file_path, index=False)
 
             df_site = evaluator.evaluate_by_site(pred_map, insitu_map, insitu_masks, dates, rows, cols)
 
             dst_file_path = os.path.join(RESULT_DIR_PATH, f"Evaluation_Insitu_By_Site_{resolution}",
-                                         f"{product_name}.csv")
+                                         f"{prod_name}.csv")
             os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
             df_site.to_csv(dst_file_path, index=False)
 
-            evaluator.evaluate_by_spatial_distribution(
-                df_site, height=grid_info["H"], width=grid_info["W"],
-                title=f"{resolution} {product_name} vs InSitu Data",
-            )
+            if not df_site.empty:
+                evaluator.evaluate_by_spatial_distribution(
+                    df_site, height=grid_info["H"], width=grid_info["W"],
+                    title=f"{resolution} {prod_name} vs InSitu Data",
+                )
 
 
 class InsituGridEvalDataset:
@@ -72,7 +71,8 @@ class InsituGridEvalDataset:
 
     @property
     def _dates(self):
-        return sorted(set(self.insitu_store.list_date()) & set(self.pred_store.list_date()))
+        dates = set(self.insitu_store.list_date()) & set(self.pred_store.list_date())
+        return filter_dates_by_years(dates, EVAL_YEARS)
 
     def get_all(self):
         H, W = self._grid_info["H"], self._grid_info["W"]

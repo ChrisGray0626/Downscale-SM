@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-  @Description Bias Correction for DDPM Inference Products using Random Forest
+  @Description Bias Correction for inference products using Random Forest
   @Author Chris
   @Date 2025/12/12
 """
@@ -24,7 +24,7 @@ RESOLUTION = RESOLUTION_1KM
 
 
 def main():
-    dataset = CorrectionDataset(PROD_NAME, resolution=RESOLUTION)
+    dataset = CorrectionDataset(product_name=PROD_NAME, resolution=RESOLUTION)
     pred_ys, insitus, aux_feats = dataset.get_training_data()
     rf_corrector = BiasCorrector()
     rf_corrector.train(pred_ys=pred_ys, insitus=insitus, aux_feats=aux_feats, verbose=True)

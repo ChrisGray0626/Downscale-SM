@@ -26,6 +26,7 @@ from ddpm_pixel.pixel_dataset import (
 )
 from esa_cci.esa_cci_dataset import ESACCIStore
 from gwr.gwr_dataset import GWRResultStore
+from resnet.resnet_dataset import ResNetCorrectionResultStore
 from resnet.resnet_dataset import ResNetResultStore
 from rf.rf_dataset import RFResultStore
 
@@ -33,9 +34,15 @@ CONTRACT_RESULT_STORE_REGISTRY = {
     ESA_CCI_NAME: ESACCIStore,
     RF_NAME: RFResultStore,
     GWR_NAME: GWRResultStore,
-    RESNET_NAME: ResNetResultStore,
     SM_NAME: SMAPStore,
     IN_SITU_NAME: InsituStore,
+}
+
+MODEL_RESULT_STORE_REGISTRY = {
+    RESNET_NAME: {
+        False: ResNetResultStore,
+        True: ResNetCorrectionResultStore,
+    },
 }
 
 DDPM_RESULT_STORE_REGISTRY = {
@@ -53,7 +60,11 @@ DDPM_RESULT_STORE_REGISTRY = {
 def build(product_name, resolution, is_correction: bool = False):
     if product_name in DDPM_RESULT_STORE_REGISTRY:
         cls = DDPM_RESULT_STORE_REGISTRY[product_name][bool(is_correction)]
+    elif product_name in MODEL_RESULT_STORE_REGISTRY:
+        cls = MODEL_RESULT_STORE_REGISTRY[product_name][bool(is_correction)]
     elif product_name in CONTRACT_RESULT_STORE_REGISTRY:
+        if is_correction:
+            raise ValueError(f"Correction store not supported for product: {product_name}")
         cls = CONTRACT_RESULT_STORE_REGISTRY[product_name]
     else:
         raise ValueError(f"Unknown product name: {product_name}")

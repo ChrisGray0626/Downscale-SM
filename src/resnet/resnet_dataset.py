@@ -72,3 +72,9 @@ class ResNetResultStore(BaseTiffStore):
     def __init__(self, resolution: str):
         base_dir = RESNET_DIR_PATH
         super().__init__(base_dir, resolution)
+
+
+class ResNetCorrectionResultStore(BaseTiffStore):
+    def __init__(self, resolution: str):
+        base_dir = RESNET_CORRECTION_DIR_PATH
+        super().__init__(base_dir, resolution)

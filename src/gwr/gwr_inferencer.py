@@ -7,8 +7,8 @@
 """
 import pickle
 
-import joblib
 import numpy as np
+from mgwr.gwr import Gaussian, _compute_betas_gwr
 from tqdm import tqdm
 
 from constants import *
@@ -16,14 +16,13 @@ from datasets.common_data_store import GridInfoStore
 from gwr.gwr_dataset import GWRInferenceDataset
 from utils.date_util import get_valid_dates
 from utils.raster_util import write_tiff
-from utils.util import suppress_linalg
 
 RESOLUTION = RESOLUTION_1KM
 
 
 def main():
     with open(GWR_MODEL_PATH, "rb") as f:
-        model, exog_scale, exog_resid = pickle.load(f)
+        model, _, _ = pickle.load(f)
 
     grid_info = GridInfoStore(RESOLUTION).get()
     H, W = grid_info["H"], grid_info["W"]
@@ -35,10 +34,8 @@ def main():
         lons, lats, X_pred, rows, cols = inf_dataset.get_all()
         X_pred = X_pred.astype(np.float64)
         pos_pred = np.column_stack([lons, lats])
-        with joblib.parallel_backend("loky", initializer=suppress_linalg, initargs=()):  # type: ignore[call-arg]
-            pred_results = model.predict(pos_pred, X_pred, exog_scale=exog_scale,
-                                         exog_resid=exog_resid)  # type: ignore[call-arg]
-        pred_ys = inf_dataset.denorm_y(pred_results.predy.flatten()).astype(np.float32)
+        pred_norm = predict_gwr(model, pos_pred, X_pred)
+        pred_ys = inf_dataset.denorm_y(pred_norm).astype(np.float32)
         pred_map = np.full((H, W), np.nan, dtype=np.float32)
         pred_map[rows, cols] = pred_ys
 
@@ -49,6 +46,25 @@ def main():
             transform=grid_info["transform"],
             crs=grid_info["crs"],
         )
+
+
+def predict_gwr(model, pos_pred: np.ndarray, x_pred: np.ndarray) -> np.ndarray:
+    if not isinstance(model.family, Gaussian):
+        raise NotImplementedError("Current GWR inference workaround only supports Gaussian family.")
+
+    model.points = pos_pred
+    if model.constant:
+        p_pred = np.hstack([np.ones((len(x_pred), 1), dtype=np.float64), x_pred])
+    else:
+        p_pred = x_pred
+
+    pred = np.empty(len(pos_pred), dtype=np.float64)
+    for i in range(len(pos_pred)):
+        wi = model._build_wi(i, model.bw).reshape(-1, 1)
+        betas, _ = _compute_betas_gwr(model.y, model.X, wi)
+        pred[i] = float(np.dot(p_pred[i], betas).reshape(-1)[0])
+    model.points = None
+    return pred.astype(np.float32)
 
 
 if __name__ == "__main__":

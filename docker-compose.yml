@@ -15,4 +15,4 @@ services:
       - ./src:/App/src
       - ./CHECKPOINTS:/App/CHECKPOINTS
       - /Volumes/Elements SE/Data/SMDownscaling:/DATA
-    command: python src/server.py
+    command: python src/runner.py

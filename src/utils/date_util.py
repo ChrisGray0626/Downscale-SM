@@ -9,6 +9,7 @@ import glob
 import os
 import re
 from datetime import timedelta, datetime
+from typing import Iterable, List, Optional
 
 from constants import NDVI_NAME, RESOLUTION_1KM, TIFF_SUFFIX, VALID_DATE_FILE_PATH, PROCESSED_DIR_PATH
 from utils.util import write_txt, read_txt
@@ -53,6 +54,13 @@ def is_valid_date(date: str):
 def get_valid_dates():
     tgt_dates = read_txt(VALID_DATE_FILE_PATH)
     return tgt_dates
+
+
+def filter_dates_by_years(dates: Iterable[str], years: Optional[Iterable[str]] = None) -> List[str]:
+    if years is None:
+        return sorted(set(str(date) for date in dates))
+    year_set = {str(year) for year in years}
+    return sorted(set(str(date) for date in dates if str(date)[:4] in year_set))
 
 
 def list_date_from_dir(dir_path: str, suffix: str = TIFF_SUFFIX):

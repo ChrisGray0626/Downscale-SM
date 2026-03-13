@@ -70,6 +70,12 @@ def inference(model: PixelNoisePredictor, dataset: DDPMPixelInferenceDataset, de
         batch_pos = batch_pos.to(device)
         batch_valid_mask = batch_valid_mask.to(device)
         batch_image_baseline = batch_image_baseline.to(device).unsqueeze(1)
+        expected_feature_num = int(model.config.input_feature_num)
+        if batch_xs.shape[1] != expected_feature_num:
+            raise ValueError(
+                f"Pixel model input feature mismatch: checkpoint expects {expected_feature_num}, "
+                f"but dataset provides {batch_xs.shape[1]}. Retrain the pixel model before inference."
+            )
         inference_seed = build_inference_seed(batch_dates[0])
 
         batch_pred_residuals = reverse_diffuse(
